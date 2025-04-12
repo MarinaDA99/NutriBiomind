@@ -7,6 +7,20 @@ from datetime import datetime, timedelta
 st.set_page_config(page_title="NutriBioMind", layout="centered")
 st.title("🌱 La regla de oro para una microbiota saludable: 30 plantas por semana")
 
+from PIL import Image
+
+# Cargar el logo
+logo = Image.open("logo.png")
+
+# Mostrar logo y nombre juntos en dos columnas
+col1, col2 = st.columns([1, 5])
+with col1:
+    st.image(logo, width=80)
+with col2:
+    st.markdown("## **NutriBiomind**")
+    st.markdown("#### 🌿 Tu guía hacia una microbiota saludable")
+
+
 # ------------------------------
 # CATEGORÍAS Y ALIMENTOS
 # ------------------------------
@@ -140,9 +154,7 @@ with st.form("registro"):
             bloques_llenos = "🟩" * progreso
             bloques_vacios = "⬜" * (total_objetivo - progreso)
 
-            st.markdown("### 🌿 Diversidad vegetal esta semana")
-            st.markdown(f"{bloques_llenos}{bloques_vacios}")
-            st.markdown(f"**{progreso}/{total_objetivo} vegetales distintos esta semana**")
+
 
         except Exception as e:
             st.info("No se pudo calcular la diversidad vegetal aún.")
@@ -344,6 +356,7 @@ if not df.empty:
         for alimento in entry.split(","):
             alimentos_semana.add(alimento.strip().lower())
 
-    st.markdown(f"🌿 Esta semana has consumido **{len(alimentos_semana)} / 30** vegetales distintos.")
+    st.markdown(f"🌿 Esta semana has consumido **{len(grupos_vegetales)} / 30** vegetales distintos.")
 else:
     st.info("Aún no hay datos registrados esta semana.")
+
