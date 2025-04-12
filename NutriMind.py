@@ -16,7 +16,9 @@ grupos_vegetales = [
     "🍎 Frutas",
     "🫘 Legumbres",
     "🌰 Frutos secos y semillas",
-    "🌾 Cereales y pseudocereales"
+    "🌾 Cereales y pseudocereales",
+    "🍄 Setas y hongos",
+    "🌿 Hierbas y especias"
 ]
 
 # Construye un set de alimentos válidos (en minúsculas)
@@ -342,6 +344,3 @@ if not df.empty:
     st.markdown(f"🌿 Esta semana has consumido **{len(alimentos_semana)} / 30** vegetales distintos.")
 else:
     st.info("Aún no hay datos registrados esta semana.")
-
-
-    st.markdown(f"🌿 Esta semana has consumido **{len(alimentos_semana)} / 30** vegetales distintos.")
