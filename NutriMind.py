@@ -16,7 +16,10 @@ st.set_page_config(page_title="NutriBioMind", layout="centered")
 
 # Cargar y mostrar el logo centrado con alta resolución
 logo = Image.open("logo.png")
-st.image(logo, width=700, use_container_width=False)
+st.markdown("<div style='text-align: center;'>", unsafe_allow_html=True)
+st.image(logo, width=80)  # Ajustá el tamaño: 250 o más si querés
+st.markdown("</div>", unsafe_allow_html=True)
+
 
 # Título principal
 st.markdown("<h1 style='text-align: center;'>🌿 Tu guía hacia una microbiota saludable</h1>", unsafe_allow_html=True)
@@ -359,7 +362,7 @@ if not df.empty:
         for alimento in entry.split(","):
             alimentos_semana.add(alimento.strip().lower())
 
-    st.markdown(f"🌿 Esta semana has consumido **{len(grupos_vegetales)} / 30** vegetales distintos.")
+    st.markdown(f"🌿 Esta semana has consumido **{len(alimentos_semana)} / 30** vegetales distintos.")
 else:
     st.info("Aún no hay datos registrados esta semana.")
 
