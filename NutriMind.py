@@ -5,11 +5,20 @@ import os
 from datetime import datetime, timedelta
 
 st.set_page_config(page_title="NutriBioMind", layout="centered")
-st.title("🌱 La regla de oro para una microbiota saludable: 30 plantas por semana")
 
 # ------------------------------
 # CATEGORÍAS Y ALIMENTOS
 # ------------------------------
+categorias = {
+    "🥦 Verduras y hortalizas": [...],  # tu lista completa aquí
+    "🍎 Frutas": [...],
+    "🌰 Frutos secos y semillas": [...],
+    "🫘 Legumbres": [...],
+    "🌾 Cereales y pseudocereales": [...],
+    ...
+    # el resto de tus categorías
+}
+
 # Define las categorías que cuentan como vegetales
 grupos_vegetales = [
     "🥦 Verduras y hortalizas",
@@ -18,6 +27,14 @@ grupos_vegetales = [
     "🌰 Frutos secos y semillas",
     "🌾 Cereales y pseudocereales"
 ]
+
+# Construye un set de alimentos válidos (en minúsculas)
+vegetales_validos = set()
+for grupo in grupos_vegetales:
+    if grupo in categorias:
+        vegetales_validos.update([a.lower() for a in categorias[grupo]])
+    else:
+        st.warning(f"Categoría no encontrada en 'categorias': {grupo}")
 # Construye un set de alimentos válidos (en minúsculas)
 vegetales_validos = set()
 for grupo in grupos_vegetales:
