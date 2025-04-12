@@ -5,45 +5,12 @@ import os
 from datetime import datetime, timedelta
 
 st.set_page_config(page_title="NutriBioMind", layout="centered")
+st.title("🌱 La regla de oro para una microbiota saludable: 30 plantas por semana")
 
 # ------------------------------
 # CATEGORÍAS Y ALIMENTOS
 # ------------------------------
 categorias = {
-    "🥦 Verduras y hortalizas": [...],  # tu lista completa aquí
-    "🍎 Frutas": [...],
-    "🌰 Frutos secos y semillas": [...],
-    "🫘 Legumbres": [...],
-    "🌾 Cereales y pseudocereales": [...],
-    ...
-    # el resto de tus categorías
-}
-
-# Define las categorías que cuentan como vegetales
-grupos_vegetales = [
-    "🥦 Verduras y hortalizas",
-    "🍎 Frutas",
-    "🫘 Legumbres",
-    "🌰 Frutos secos y semillas",
-    "🌾 Cereales y pseudocereales"
-]
-
-# Construye un set de alimentos válidos (en minúsculas)
-vegetales_validos = set()
-for grupo in grupos_vegetales:
-    if grupo in categorias:
-        vegetales_validos.update([a.lower() for a in categorias[grupo]])
-    else:
-        st.warning(f"Categoría no encontrada en 'categorias': {grupo}")
-# Construye un set de alimentos válidos (en minúsculas)
-vegetales_validos = set()
-for grupo in grupos_vegetales:
-    if grupo in categorias:
-        vegetales_validos.update([a.lower() for a in categorias[grupo]])
-    else:
-        st.warning(f"Categoría no encontrada en 'categorias': {grupo}")
-
-
 categorias = {
     "🥦 Verduras y hortalizas": ["acelga", "apio", "berenjena", "brócoli", "calabacín", "calabaza", "cardo", "cebolla", "cebolleta", "col blanca", "col de Bruselas", "col lombarda", "col rizada (kale)", "coliflor", "endibia", "escarola", "espárrago", "espinaca", "hinojo", "judía verde", "lechuga romana", "lechuga iceberg", "nabo", "pepino", "pimiento rojo", "pimiento verde", "puerro", "rábano", "remolacha", "tomate", "zanahoria", "alcachofa", "chirivía", "boniato (batata)", "patata", "ñame", "taro", "malanga", "yuca", "okra", "pak choi", "berza", "acedera", "mostaza verde", "diente de león (hojas)", "berro", "canónigos", "mizuna", "tatsoi", "escarola rizada"],
   "🍎 Frutas": ["manzana", "pera", "plátano", "naranja", "mandarina", "kiwi", "uva", "granada", "fresa", "frambuesa", "mora", "arándano", "cereza", "melocotón", "albaricoque", "ciruela", "mango", "papaya", "piña", "melón", "sandía", "higo", "caqui", "lichi", "maracuyá", "guayaba", "chirimoya", "carambola", "níspero", "pomelo", "lima", "limón", "coco", "aguacate", "tomate cherry", "grosella", "zarzamora", "mandarino", "plátano macho", "dátil"],
@@ -94,6 +61,26 @@ categorias = {
   "menta", "hierbabuena", "romero", "tomillo", "orégano", "psyllium", "inulina pura", "semillas de cáñamo", "semillas de sésamo",
   "semillas de calabaza", "semillas de girasol", "pipas con cáscara", "maíz cocido", "cuscús integral"]
 }
+
+# Define las categorías que cuentan como vegetales
+grupos_vegetales = [
+    "🥦 Verduras y hortalizas",
+    "🍎 Frutas",
+    "🫘 Legumbres",
+    "🌰 Frutos secos y semillas",
+    "🌾 Cereales y pseudocereales"
+]
+
+# Construye un set de alimentos válidos (en minúsculas)
+vegetales_validos = set()
+for grupo in grupos_vegetales:
+    if grupo in categorias:
+        vegetales_validos.update([a.lower() for a in categorias[grupo]])
+    else:
+        st.warning(f"Categoría no encontrada en 'categorias': {grupo}")
+
+
+
 
 todos_alimentos = sorted({item for sublist in categorias.values() for item in sublist})
 
