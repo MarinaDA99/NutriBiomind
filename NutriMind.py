@@ -5,8 +5,24 @@ import os
 from datetime import datetime, timedelta
 from PIL import Image
 
-import streamlit as st
-from PIL import Image
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+
+def guardar_en_google_sheets(fila):
+    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+    creds = ServiceAccountCredentials.from_json_keyfile_name("service_account.json", scope)
+    client = gspread.authorize(creds)
+
+    # Abre tu hoja de cálculo por ID
+    sheet = client.open_by_key(1v9T0pF1uc6dSOApn-o12F_7qDO_ii5FkecTxAHlaW9U).sheet1
+    sheet.append_row(fila)
+    
+    if submitted:
+    fecha = datetime.now().strftime('%Y-%m-%d')
+    fila = [fecha, ", ".join(seleccionados), sueno, ejercicio, animo]
+    guardar_en_google_sheets(fila)
+    st.success("✅ Registro guardado en Google Sheets.")
+
 
 import streamlit as st
 from PIL import Image
