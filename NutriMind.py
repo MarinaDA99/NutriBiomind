@@ -12,7 +12,6 @@ st.title("🌱 La regla de oro para una microbiota saludable: 30 plantas por sem
 # ------------------------------
 # Define las categorías que cuentan como vegetales
 grupos_vegetales = [
-    grupos_vegetales = [
     "🥦 Verduras y hortalizas",
     "🍎 Frutas",
     "🫘 Legumbres",
