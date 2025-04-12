@@ -8,21 +8,21 @@ from PIL import Image
 import streamlit as st
 from PIL import Image
 
+import streamlit as st
+from PIL import Image
+
 # Configurar la página
 st.set_page_config(page_title="NutriBioMind", layout="centered")
 
-# Cargar el logo
-logo = Image.open("logo.png")
+# Cargar y mostrar el logo centrado con alta resolución
+logo = Image.open("logo.png.png")
+st.image(logo, width=200, use_column_width=False)
 
-# Mostrar el logo en grande centrado
-st.image(logo, width=150)  # Podés ajustar el tamaño a gusto
-
-# Texto principal
+# Título principal
 st.markdown("<h1 style='text-align: center;'>🌿 Tu guía hacia una microbiota saludable</h1>", unsafe_allow_html=True)
 
-# Subtítulo más pequeño
-st.markdown("<h3 style='text-align: center;'>🌱 La regla de oro para una microbiota saludable: 30 plantas por semana</h3>", unsafe_allow_html=True)
-
+# Subtítulo
+st.markdown("<h5 style='text-align: center;'>🌱 La regla de oro para una microbiota saludable: 30 plantas por semana</h3>", unsafe_allow_html=True)
 
 # ------------------------------
 # CATEGORÍAS Y ALIMENTOS
