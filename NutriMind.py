@@ -1,6 +1,6 @@
 import pandas as pd
 import streamlit as st
-import csvhttps://github.com/MarinaDA99/NutriBiomind/blob/main/NutriMind.py
+import csv
 import os
 from datetime import datetime, timedelta
 from PIL import Image
