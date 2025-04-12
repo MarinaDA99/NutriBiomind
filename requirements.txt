@@ -1,0 +1,3 @@
+pandas
+streamlit
+utf-8-sig
