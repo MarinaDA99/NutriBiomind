@@ -4,8 +4,8 @@ import csv
 import os
 from datetime import datetime, timedelta
 
-st.set_page_config(page_title="NutriMind", layout="centered")
-st.title("🌱 NutriMind: Tu coach de hábitos saludables")
+st.set_page_config(page_title="NutriBiomind", layout="centered")
+st.title("🌱 La regla de oro para una microbiota saludable: 30 plantas por semana")
 
 # ------------------------------
 # CATEGORÍAS Y ALIMENTOS
@@ -173,6 +173,16 @@ with st.form("registro"):
   "trigo", "avena", "cebada", "centeno", "arroz", "maíz", "alforfón", "amaranto", "teff", "mijo", "quinoa",
   "espelta", "kamut", "sorgo", "farro", "freekeh", "bulgur", "candeal", "arroz salvaje", "moniato", "tupinambo"
 ]
+            grupos_vegetales = [
+                "🥦 Verduras y hortalizas",
+                "🍎 Frutas",
+                "🫘 Legumbres",
+                "🌰 Frutos secos y semillas",
+                "🌾 Cereales y pseudocereales"
+            ]
+            vegetales_validos = set()
+            for grupo in grupos_vegetales:
+                vegetales_validos.update([a.lower() for a in categorias[grupo]])
 
             consumidos = [v for v in vegetales_objetivo if v in alimentos_semana]
             progreso = len(consumidos)
@@ -183,7 +193,9 @@ with st.form("registro"):
 
             # Mostrar progreso único con cuadritos
             total_objetivo = 30
-            progreso = len(alimentos_semana)
+            alimentos_vegetales = [a for a in alimentos_semana if a in vegetales_validos]
+            progreso = len(set(alimentos_vegetales))
+
             bloques_llenos = "🟩" * progreso
             bloques_vacios = "⬜" * (total_objetivo - progreso)
 
