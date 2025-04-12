@@ -345,5 +345,3 @@ else:
 
 
     st.markdown(f"🌿 Esta semana has consumido **{len(alimentos_semana)} / 30** vegetales distintos.")
-else:
-    st.info("Aún no hay datos registrados esta semana.")
