@@ -90,7 +90,6 @@ categorias = {
   "menta", "hierbabuena", "romero", "tomillo", "orégano", "psyllium", "inulina pura", "semillas de cáñamo", "semillas de sésamo",
   "semillas de calabaza", "semillas de girasol", "pipas con cáscara", "maíz cocido", "cuscús integral"]
 }
-from categorias_completas import categorias  # Suponiendo que las pones en un archivo externo para claridad
 
 # Define las categorías que cuentan como vegetales
 grupos_vegetales = [
