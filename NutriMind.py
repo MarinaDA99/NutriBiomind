@@ -17,7 +17,7 @@ st.set_page_config(page_title="NutriBioMind", layout="centered")
 # Cargar y mostrar el logo centrado con alta resolución
 logo = Image.open("logo.png")
 st.markdown("<div style='text-align: center;'>", unsafe_allow_html=True)
-st.image(logo, width=80)  # Ajustá el tamaño: 250 o más si querés
+st.image(logo, width=120)  # Ajustá el tamaño: 250 o más si querés
 st.markdown("</div>", unsafe_allow_html=True)
 
 
