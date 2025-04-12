@@ -14,6 +14,7 @@ def guardar_en_google_sheets(fila):
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     creds_dict = st.secrets["gcp_service_account"]
     creds = ServiceAccountCredentials.from_json_keyfile_dict(dict(creds_dict), scope)
+    client = gspread.authorize(creds)
 
     client = gspread.authorize(creds)
     sheet = client.open_by_key("1v9T0pF1uc6dSOApn-o12F_7qDO_ii5FkecTxAHlaW9U").sheet1
