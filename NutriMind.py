@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from PIL import Image
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
+import json  # Importa la biblioteca json
 
 # ------------------------------
 # FUNCION PARA GUARDAR EN GOOGLE SHEETS
@@ -15,8 +16,18 @@ def guardar_en_google_sheets(fila):
         "https://spreadsheets.google.com/feeds",
         "https://www.googleapis.com/auth/drive"
     ]
-    creds_dict = st.secrets["gcp_service_account"]
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+    # Carga las credenciales desde el archivo JSON
+    try:
+        with open("gcp_credentials.json", "r") as f:
+            creds_info = json.load(f)
+    except FileNotFoundError:
+        st.error("Error: El archivo gcp_credentials.json no se encontró.")
+        return
+    except json.JSONDecodeError:
+        st.error("Error: El archivo gcp_credentials.json tiene un formato JSON inválido.")
+        return
+
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_info, scope)
     client = gspread.authorize(creds)
     sheet = client.open_by_key("1v9T0pF1uc6dSOApn-o12F_7qDO_ii5FkecTxAHlaW9U").sheet1
     sheet.append_row(fila)
