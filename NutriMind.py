@@ -1,24 +1,27 @@
 import pandas as pd
 import streamlit as st
-import csv
+import csvhttps://github.com/MarinaDA99/NutriBiomind/blob/main/NutriMind.py
 import os
 from datetime import datetime, timedelta
-
-st.set_page_config(page_title="NutriBioMind", layout="centered")
-st.title("🌱 La regla de oro para una microbiota saludable: 30 plantas por semana")
-
 from PIL import Image
+
+import streamlit as st
+from PIL import Image
+
+# Configurar la página
+st.set_page_config(page_title="NutriBioMind", layout="centered")
 
 # Cargar el logo
 logo = Image.open("logo.png")
 
-# Mostrar logo y nombre juntos en dos columnas
-col1, col2 = st.columns([1, 5])
-with col1:
-    st.image(logo, width=80)
-with col2:
-    st.markdown("## **NutriBiomind**")
-    st.markdown("#### 🌿 Tu guía hacia una microbiota saludable")
+# Mostrar el logo en grande centrado
+st.image(logo, width=150)  # Podés ajustar el tamaño a gusto
+
+# Texto principal
+st.markdown("<h1 style='text-align: center;'>🌿 Tu guía hacia una microbiota saludable</h1>", unsafe_allow_html=True)
+
+# Subtítulo más pequeño
+st.markdown("<h3 style='text-align: center;'>🌱 La regla de oro para una microbiota saludable: 30 plantas por semana</h3>", unsafe_allow_html=True)
 
 
 # ------------------------------
