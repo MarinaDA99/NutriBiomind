@@ -12,19 +12,20 @@ st.title("🌱 La regla de oro para una microbiota saludable: 30 plantas por sem
 # ------------------------------
 # Define las categorías que cuentan como vegetales
 grupos_vegetales = [
+    grupos_vegetales = [
     "🥦 Verduras y hortalizas",
     "🍎 Frutas",
     "🫘 Legumbres",
     "🌰 Frutos secos y semillas",
-    "🌾 Cereales y pseudocereales",
-    "🍄 Setas y hongos",
-    "🌿 Hierbas y especias"
+    "🌾 Cereales y pseudocereales"
 ]
-
 # Construye un set de alimentos válidos (en minúsculas)
 vegetales_validos = set()
 for grupo in grupos_vegetales:
-    vegetales_validos.update([a.lower() for a in categorias[grupo]])
+    if grupo in categorias:
+        vegetales_validos.update([a.lower() for a in categorias[grupo]])
+    else:
+        st.warning(f"Categoría no encontrada en 'categorias': {grupo}")
 
 
 categorias = {
