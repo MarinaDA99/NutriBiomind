@@ -15,7 +15,7 @@ from PIL import Image
 st.set_page_config(page_title="NutriBioMind", layout="centered")
 
 # Cargar y mostrar el logo centrado con alta resolución
-logo = Image.open("logo.png.png")
+logo = Image.open("logo.png")
 st.image(logo, width=200, use_column_width=False)
 
 # Título principal
