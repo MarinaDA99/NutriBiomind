@@ -17,7 +17,7 @@ def guardar_en_google_sheets(fila):
     sheet = client.open_by_key("1v9T0pF1uc6dSOApn-o12F_7qDO_ii5FkecTxAHlaW9U").sheet1
     sheet.append_row(fila)
     
-    if submitted:
+if submitted:
     fecha = datetime.now().strftime('%Y-%m-%d')
     fila = [fecha, ", ".join(seleccionados), sueno, ejercicio, animo]
     guardar_en_google_sheets(fila)
