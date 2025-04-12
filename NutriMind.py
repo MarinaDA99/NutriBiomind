@@ -16,7 +16,7 @@ st.set_page_config(page_title="NutriBioMind", layout="centered")
 
 # Cargar y mostrar el logo centrado con alta resolución
 logo = Image.open("logo.png")
-st.image(logo, width=100, use_column_width=False)
+st.image(logo, width=700, use_container_width=False)
 
 # Título principal
 st.markdown("<h1 style='text-align: center;'>🌿 Tu guía hacia una microbiota saludable</h1>", unsafe_allow_html=True)
