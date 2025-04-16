@@ -75,7 +75,7 @@ categorias = {
 grupos_vegetales = [
     "🥦 Verduras y hortalizas",
     "🍎 Frutas",
-    "🫘 Legumbres",
+    "🦘 Legumbres",
     "🌰 Frutos secos y semillas",
     "🌾 Cereales y pseudocereales"
 ]
@@ -100,43 +100,34 @@ with st.form("registro"):
 
     if submitted:
         fecha = datetime.now().strftime('%Y-%m-%d')
-        os.makedirs("data", exist_ok=True)
-        archivo_csv = "data/habitos.csv"
         registro = [fecha, ", ".join(seleccionados), sueno, ejercicio, animo]
-        nuevo = not os.path.exists(archivo_csv)
 
-        with open(archivo_csv, "a", newline="", encoding="utf-8-sig") as f:
-            writer = csv.writer(f)
-            if nuevo:
-                writer.writerow(["fecha", "comida", "sueno", "ejercicio", "animo"])
-            writer.writerow(registro)
-
+        # Guardar en Google Sheets
+        sheet = client.open("habitos_microbiota").sheet1
+        sheet.append_row(registro, value_input_option="USER_ENTERED")
         st.success("✅ Registro guardado correctamente.")
 
-# --- Cargar datos ---
-archivo_csv = "data/habitos.csv"
-if os.path.exists(archivo_csv):
-    df = pd.read_csv(archivo_csv, encoding="utf-8-sig")
+# --- Cargar datos desde Google Sheets ---
+try:
+    sheet = client.open("habitos_microbiota").sheet1
+    data = sheet.get_all_records()
+    df = pd.DataFrame(data)
+
     if not df.empty:
-        df.columns = ["fecha", "comida", "sueno", "ejercicio", "animo"]
         df["fecha"] = pd.to_datetime(df["fecha"]).dt.date
 
         # --- Mostrar vegetales únicos por día ---
         st.markdown("---")
         st.subheader("📅 Vegetales únicos por día")
         for fecha, grupo in df.groupby("fecha"):
-        diarios = set()  # Asegúrate de inicializar aquí
-
-        for entrada in grupo["comida"].dropna():
-            if isinstance(entrada, str):  # Evita errores si no es texto
-            items = entrada.split(",")
-                for item in items:
-                item_clean = item.strip().lower()
-                    if item_clean in vegetales_validos:
-                    diarios.add(item_clean)
-
-        st.markdown(f"📆 **{fecha}**: {len(diarios)} vegetales: {', '.join(sorted(diarios))}")
-
+            diarios = set()
+            for entrada in grupo["comida"].dropna():
+                if isinstance(entrada, str):
+                    for item in entrada.split(","):
+                        item_clean = item.strip().lower()
+                        if item_clean in vegetales_validos:
+                            diarios.add(item_clean)
+            st.markdown(f"📆 **{fecha}**: {len(diarios)} vegetales: {', '.join(sorted(diarios))}")
 
         # --- Análisis semanal ---
         st.markdown("---")
@@ -161,9 +152,10 @@ if os.path.exists(archivo_csv):
         st.subheader("💡 Sugerencias para hoy")
         sugerencias = sorted(list(vegetales_validos - vegetales_semana))[:5]
         if sugerencias:
-            st.markdown("🎯 Prueba algo nuevo:")
+            st.markdown("🌟 Prueba algo nuevo:")
             st.markdown(", ".join(sugerencias))
         else:
             st.success("🎉 ¡Ya has probado 30 vegetales distintos esta semana!")
-else:
-    st.info("Aún no has registrado comidas.")
+
+except Exception as e:
+    st.warning(f"No se pudieron cargar los datos: {e}")
