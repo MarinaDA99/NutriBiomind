@@ -105,13 +105,55 @@ with st.form("registro"):
     submitted = st.form_submit_button("Guardar")
 
     if submitted:
-        fecha = datetime.now().strftime('%Y-%m-%d')
-        registro = [fecha, ", ".join(seleccionados), sueno, ejercicio, animo]
+    fecha = datetime.now().date()
+    fecha_str = fecha.strftime('%Y-%m-%d')
+    
+    # --- Calcular diversidad vegetal diaria ---
+    vegetales_dia = {
+        item.strip().lower()
+        for item in seleccionados
+        if item.strip().lower() in vegetales_validos
+    }
+    diversidad_diaria = len(vegetales_dia)
 
-        # Guardar en Google Sheets
-        sheet = client.open("habitos_microbiota").sheet1
-        sheet.append_row(registro, value_input_option="USER_ENTERED")
-        st.success("✅ Registro guardado correctamente.")
+    # Abrir hoja
+    sheet = client.open("habitos_microbiota").sheet1
+
+    # Añadir encabezados si la hoja está vacía
+    if len(sheet.get_all_values()) == 0:
+        sheet.append_row(["fecha", "comida", "sueno", "ejercicio", "animo", "diversidad_diaria", "tipo"], value_input_option="USER_ENTERED")
+
+    # Guardar fila del día
+    registro = [fecha_str, ", ".join(seleccionados), sueno, ejercicio, animo, diversidad_diaria, "registro"]
+    sheet.append_row(registro, value_input_option="USER_ENTERED")
+
+    # --- Revisar si toca guardar resumen semanal ---
+    if fecha.weekday() == 0:  # 0 = lunes
+        data = sheet.get_all_records()
+        df = pd.DataFrame(data)
+        df["fecha"] = pd.to_datetime(df["fecha"]).dt.date
+
+        # Filtrar registros de la semana pasada
+        inicio_semana = fecha - timedelta(days=7)
+        semana_df = df[(df["fecha"] >= inicio_semana) & (df["tipo"] == "registro")]
+
+        # Calcular diversidad semanal
+        vegetales_semana = set()
+        for entrada in semana_df["comida"].dropna():
+            for item in entrada.split(","):
+                if item.strip().lower() in vegetales_validos:
+                    vegetales_semana.add(item.strip().lower())
+
+        diversidad_semanal = len(vegetales_semana)
+
+        # Verificar si ya hay un resumen de esta semana
+        ya_hay = df[(df["fecha"] == fecha) & (df["tipo"] == "resumen")]
+        if ya_hay.empty:
+            resumen = [fecha_str, "", "", "", "", diversidad_semanal, "resumen"]
+            sheet.append_row(resumen, value_input_option="USER_ENTERED")
+
+    st.success("✅ Registro y diversidad guardados correctamente.")
+
 
 # --- Cargar datos desde Google Sheets ---
 try:
