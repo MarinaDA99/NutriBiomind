@@ -121,18 +121,14 @@ with st.form("registro"):
             if any(item.lower() in [s.lower() for s in seleccionados] for item in items):
                 categorias_contadas[cat] = 1
 
-        os.makedirs("data", exist_ok=True)
+
         # Asegúrate de que la carpeta existe
-os.makedirs("habitos", exist_ok=True)
-
-# Archivo de destino
+# Save new data with headers if the file doesn't exist
+os.makedirs("data", exist_ok=True)
 archivo_csv = "data/habitos.csv"
-
-# Datos a guardar
 registro = [fecha, ", ".join(seleccionados), sueno, ejercicio, animo] + list(categorias_contadas.values())
-
-# Escribe encabezados si el archivo no existe
 es_nuevo = not os.path.exists(archivo_csv)
+
 with open(archivo_csv, "a", newline="", encoding="utf-8-sig") as f:
     writer = csv.writer(f)
     if es_nuevo:
@@ -140,7 +136,6 @@ with open(archivo_csv, "a", newline="", encoding="utf-8-sig") as f:
         writer.writerow(encabezados)
         writer.writerow(registro)
 
-        st.success("✅ Registro guardado correctamente.")
         # ------------------------------
         # 🌿 Cálculo de vegetales únicos esta semana (desde el lunes)
         # ------------------------------
