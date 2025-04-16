@@ -8,6 +8,10 @@ import streamlit as st
 from oauth2client.service_account import ServiceAccountCredentials
 import gspread
 
+# --- Configuración de la página ---
+st.set_page_config(page_title="Dieta vegetal 30x", layout="centered")
+st.title("🌱 La regla de oro: ¡30 plantas distintas por semana!")
+
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 
 # Cargar desde secrets
