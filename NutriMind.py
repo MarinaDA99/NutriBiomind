@@ -95,20 +95,26 @@ def guardar_registro(sheet, fecha, seleccionados, sueno, ejercicio, animo):
 
 # --- Guardar resumen semanal ---
 def guardar_resumen_semanal(sheet, fecha):
-        values = sheet.get_all_values()
-        if values:
-            headers = values[0]
-            if len(set(headers)) < len(headers):
-                st.error("❌ Encabezados duplicados en Google Sheets. Corrige los títulos de columna.")
-                return
-            df = pd.DataFrame(values[1:], columns=headers)
+    values = sheet.get_all_values()
+    if not values:
+        st.error("❌ La hoja está vacía.")
+        return
 
+    headers = values[0]
+    if len(set(headers)) < len(headers):
+        st.error("❌ Encabezados duplicados en Google Sheets. Corrige los títulos de columna.")
+        return
+
+    df = pd.DataFrame(values[1:], columns=headers)
     df["fecha"] = pd.to_datetime(df["fecha"]).dt.date
     inicio_semana = fecha - timedelta(days=7)
     semana_df = df[(df["fecha"] >= inicio_semana) & (df["tipo"] == "registro")]
     vegetales_semana = set()
     for entrada in semana_df["comida"].dropna():
-        vegetales_semana.update([i.strip().lower() for i in entrada.split(",") if i.strip().lower() in vegetales_validos])
+        vegetales_semana.update([
+            i.strip().lower() for i in entrada.split(",")
+            if i.strip().lower() in vegetales_validos
+        ])
     diversidad_semanal = len(vegetales_semana)
     ya_hay = df[(df["fecha"] == fecha) & (df["tipo"] == "resumen")]
     if ya_hay.empty:
