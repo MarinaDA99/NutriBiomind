@@ -2,7 +2,7 @@ import pandas as pd
 import streamlit as st
 import csv
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 
 st.set_page_config(page_title="NutriBioMind", layout="centered")
 st.title("🌱 La regla de oro para una microbiota saludable: 30 plantas por semana")
