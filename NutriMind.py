@@ -104,9 +104,9 @@ with st.form("registro"):
     animo = st.slider("¿Cómo te sientes hoy?", 1, 5, 3)
     submitted = st.form_submit_button("Guardar")
 
-if submitted:
-    fecha = datetime.now().date()
-    fecha_str = fecha.strftime('%Y-%m-%d')
+    if submitted:
+        fecha = datetime.now().date()
+        fecha_str = fecha.strftime('%Y-%m-%d')
     
     # --- Calcular diversidad vegetal diaria ---
     vegetales_dia = {
