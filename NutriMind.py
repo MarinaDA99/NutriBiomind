@@ -138,7 +138,7 @@ with open(archivo_csv, "a", newline="", encoding="utf-8-sig") as f:
     if es_nuevo:
         encabezados = ["fecha", "comida", "sueno", "ejercicio", "animo"] + list(categorias.keys())
         writer.writerow(encabezados)
-    writer.writerow(registro)
+        writer.writerow(registro)
 
         st.success("✅ Registro guardado correctamente.")
         # ------------------------------
