@@ -1,32 +1,30 @@
+# nutribio_app.py
 import streamlit as st
 import pandas as pd
-import csv
-import os
-from datetime import datetime, timedelta
 import json
-import streamlit as st
+from datetime import datetime, timedelta
 from oauth2client.service_account import ServiceAccountCredentials
 import gspread
+import plotly.express as px
+from sklearn.linear_model import LinearRegression
+from sklearn.cluster import KMeans
+import numpy as np
+import io
 
-# --- Configuración de la página ---
-st.set_page_config(page_title="Dieta vegetal 30x", layout="centered")
+st.set_page_config(page_title="NutriBioMind", layout="centered")
 st.title("🌱 La regla de oro: ¡30 plantas distintas por semana!")
 
+# --- Inicialización de credenciales ---
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-
-# Cargar desde secrets
 creds_dict = json.loads(st.secrets["gcp_service_account"])
 creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
-client = gspread.authorize(creds)
 
+# --- Conectar a Google Sheets ---
+def get_sheet():
+    client = gspread.authorize(creds)
+    return client.open("habitos_microbiota").sheet1
 
-try:
-    sheet = client.open("habitos_microbiota").sheet1
-    st.success("✅ ¡Conexión a Google Sheets exitosa!")
-except Exception as e:
-    st.error(f"❌ Error al conectar con Google Sheets: {e}")
-
-# --- Diccionario de categorías y alimentos ---
+# --- Datos de categorías (resumido) ---
 categorias = {
     "🥦 Verduras y hortalizas": ["acelga", "apio", "berenjena", "brócoli", "calabacín", "calabaza", "cardo", "cebolla", "cebolleta", "col blanca", "col de Bruselas", "col lombarda", "col rizada (kale)", "coliflor", "endibia", "escarola", "espárrago", "espinaca", "hinojo", "judía verde", "lechuga romana", "lechuga iceberg", "nabo", "pepino", "pimiento rojo", "pimiento verde", "puerro", "rábano", "remolacha", "tomate", "zanahoria", "alcachofa", "chirivía", "boniato (batata)", "patata", "ñame", "taro", "malanga", "yuca", "okra", "pak choi", "berza", "acedera", "mostaza verde", "diente de león (hojas)", "berro", "canónigos", "mizuna", "tatsoi", "escarola rizada"],
   "🍎 Frutas": ["manzana", "pera", "plátano", "naranja", "mandarina", "kiwi", "uva", "granada", "fresa", "frambuesa", "mora", "arándano", "cereza", "melocotón", "albaricoque", "ciruela", "mango", "papaya", "piña", "melón", "sandía", "higo", "caqui", "lichi", "maracuyá", "guayaba", "chirimoya", "carambola", "níspero", "pomelo", "lima", "limón", "coco", "aguacate", "tomate cherry", "grosella", "zarzamora", "mandarino", "plátano macho", "dátil"],
@@ -77,133 +75,126 @@ categorias = {
   "menta", "hierbabuena", "romero", "tomillo", "orégano", "psyllium", "inulina pura", "semillas de cáñamo", "semillas de sésamo",
   "semillas de calabaza", "semillas de girasol", "pipas con cáscara", "maíz cocido", "cuscús integral"]
 }
-# --- Grupos válidos como vegetales ---
-grupos_vegetales = [
-    "🥦 Verduras y hortalizas",
-    "🍎 Frutas",
-    "🦘 Legumbres",
-    "🌰 Frutos secos y semillas",
-    "🌾 Cereales y pseudocereales"
-]
 
-# --- Set de alimentos vegetales válidos ---
-vegetales_validos = set()
-for grupo in grupos_vegetales:
-    if grupo in categorias:
-        vegetales_validos.update([a.lower() for a in categorias[grupo]])
+grupos_vegetales = list(categorias.keys())
+vegetales_validos = set([item.lower() for sub in categorias.values() for item in sub])
+todos_alimentos = sorted({item for sub in categorias.values() for item in sub})
 
-# --- Lista de todos los alimentos (para multiselect) ---
-todos_alimentos = sorted({item for sublist in categorias.values() for item in sublist})
-
-# --- Formulario diario ---
-with st.form("registro"):
-    st.subheader("📋 Registro diario")
-    seleccionados = st.multiselect("¿Qué comiste hoy?", options=todos_alimentos)
-    sueno = st.number_input("¿Horas de sueño?", min_value=0.0, max_value=24.0, step=0.5)
-    ejercicio = st.text_input("¿Ejercicio realizado?")
-    animo = st.slider("¿Cómo te sientes hoy?", 1, 5, 3)
-    submitted = st.form_submit_button("Guardar")
-
-    if submitted:
-        fecha = datetime.now().date()
-        fecha_str = fecha.strftime('%Y-%m-%d')
-    
-    # --- Calcular diversidad vegetal diaria ---
-    vegetales_dia = {
-        item.strip().lower()
-        for item in seleccionados
-        if item.strip().lower() in vegetales_validos
-    }
+# --- Guardar registro diario ---
+def guardar_registro(sheet, fecha, seleccionados, sueno, ejercicio, animo):
+    fecha_str = fecha.strftime('%Y-%m-%d')
+    vegetales_dia = {i.lower() for i in seleccionados if i.lower() in vegetales_validos}
     diversidad_diaria = len(vegetales_dia)
-
-    # Abrir hoja
-    sheet = client.open("habitos_microbiota").sheet1
-
-    # Añadir encabezados si la hoja está vacía
     if len(sheet.get_all_values()) == 0:
-        sheet.append_row(["fecha", "comida", "sueno", "ejercicio", "animo", "diversidad_diaria", "tipo"], value_input_option="USER_ENTERED")
+        sheet.append_row(["fecha", "comida", "sueno", "ejercicio", "animo", "diversidad_diaria", "tipo"])
+    sheet.append_row([
+        fecha_str, ", ".join(seleccionados), sueno, ejercicio, animo, diversidad_diaria, "registro"
+    ])
+    if fecha.weekday() == 0:
+        guardar_resumen_semanal(sheet, fecha)
 
-    # Guardar fila del día
-    registro = [fecha_str, ", ".join(seleccionados), sueno, ejercicio, animo, diversidad_diaria, "registro"]
-    sheet.append_row(registro, value_input_option="USER_ENTERED")
-
-    # --- Revisar si toca guardar resumen semanal ---
-    if fecha.weekday() == 0:  # 0 = lunes
-        data = sheet.get_all_records()
-        df = pd.DataFrame(data)
-        df["fecha"] = pd.to_datetime(df["fecha"]).dt.date
-
-        # Filtrar registros de la semana pasada
-        inicio_semana = fecha - timedelta(days=7)
-        semana_df = df[(df["fecha"] >= inicio_semana) & (df["tipo"] == "registro")]
-
-        # Calcular diversidad semanal
-        vegetales_semana = set()
-        for entrada in semana_df["comida"].dropna():
-            for item in entrada.split(","):
-                if item.strip().lower() in vegetales_validos:
-                    vegetales_semana.add(item.strip().lower())
-
-        diversidad_semanal = len(vegetales_semana)
-
-        # Verificar si ya hay un resumen de esta semana
-        ya_hay = df[(df["fecha"] == fecha) & (df["tipo"] == "resumen")]
-        if ya_hay.empty:
-            resumen = [fecha_str, "", "", "", "", diversidad_semanal, "resumen"]
-            sheet.append_row(resumen, value_input_option="USER_ENTERED")
-
-    st.success("✅ Registro y diversidad guardados correctamente.")
-
-
-# --- Cargar datos desde Google Sheets ---
-try:
-    sheet = client.open("habitos_microbiota").sheet1
+# --- Guardar resumen semanal ---
+def guardar_resumen_semanal(sheet, fecha):
     data = sheet.get_all_records()
     df = pd.DataFrame(data)
+    df["fecha"] = pd.to_datetime(df["fecha"]).dt.date
+    inicio_semana = fecha - timedelta(days=7)
+    semana_df = df[(df["fecha"] >= inicio_semana) & (df["tipo"] == "registro")]
+    vegetales_semana = set()
+    for entrada in semana_df["comida"].dropna():
+        vegetales_semana.update([i.strip().lower() for i in entrada.split(",") if i.strip().lower() in vegetales_validos])
+    diversidad_semanal = len(vegetales_semana)
+    ya_hay = df[(df["fecha"] == fecha) & (df["tipo"] == "resumen")]
+    if ya_hay.empty:
+        sheet.append_row([fecha.strftime('%Y-%m-%d'), "", "", "", "", diversidad_semanal, "resumen"])
 
+# --- Visualización y análisis ---
+def mostrar_registros(df):
+    st.markdown("---")
+    st.subheader("📅 Vegetales únicos por día")
+    df["fecha"] = pd.to_datetime(df["fecha"]).dt.date
+    for fecha, grupo in df.groupby("fecha"):
+        diarios = set()
+        for entrada in grupo["comida"].dropna():
+            diarios.update([i.strip().lower() for i in entrada.split(",") if i.strip().lower() in vegetales_validos])
+        st.markdown(f"📆 **{fecha}**: {len(diarios)} vegetales: {', '.join(sorted(diarios))}")
+
+    st.markdown("---")
+    st.subheader("🌿 Diversidad vegetal semanal")
+    inicio_semana = datetime.now().date() - timedelta(days=datetime.now().weekday())
+    df_semana = df[df["fecha"] >= inicio_semana]
+    vegetales_semana = set()
+    for entrada in df_semana["comida"].dropna():
+        vegetales_semana.update([i.strip().lower() for i in entrada.split(",") if i.strip().lower() in vegetales_validos])
+    progreso = len(vegetales_semana)
+    st.markdown(f"Esta semana has comido **{progreso} / 30** vegetales diferentes.")
+    st.progress(progreso / 30)
+    sugerencias = sorted(list(vegetales_validos - vegetales_semana))[:5]
+    st.subheader("💡 Sugerencias para hoy")
+    if sugerencias:
+        st.markdown("🌟 Prueba algo nuevo: " + ", ".join(sugerencias))
+    else:
+        st.success("🎉 ¡Ya has probado 30 vegetales distintos esta semana!")
+
+    # --- Visualizaciones Plotly ---
     if not df.empty:
-        df["fecha"] = pd.to_datetime(df["fecha"]).dt.date
+        df_vis = df[df['tipo'] == 'registro'].copy()
+        df_vis["fecha"] = pd.to_datetime(df_vis["fecha"])
+        st.subheader("📊 Gráfico: Ánimo vs. Sueño")
+        fig = px.scatter(df_vis, x="sueno", y="animo", hover_data=["fecha", "comida"])
+        st.plotly_chart(fig, use_container_width=True)
 
-        # --- Mostrar vegetales únicos por día ---
-        st.markdown("---")
-        st.subheader("📅 Vegetales únicos por día")
-        for fecha, grupo in df.groupby("fecha"):
-            diarios = set()
-            for entrada in grupo["comida"].dropna():
-                if isinstance(entrada, str):
-                    for item in entrada.split(","):
-                        item_clean = item.strip().lower()
-                        if item_clean in vegetales_validos:
-                            diarios.add(item_clean)
-            st.markdown(f"📆 **{fecha}**: {len(diarios)} vegetales: {', '.join(sorted(diarios))}")
+        st.subheader("📈 Diversidad por día")
+        fig2 = px.line(df_vis, x="fecha", y="diversidad_diaria")
+        st.plotly_chart(fig2, use_container_width=True)
 
-        # --- Análisis semanal ---
-        st.markdown("---")
-        st.subheader("🌿 Diversidad vegetal semanal")
-        inicio_semana = datetime.now().date() - timedelta(days=datetime.now().weekday())
-        df_semana = df[df["fecha"] >= inicio_semana]
+        # --- ML: Regresión para predecir ánimo ---
+        st.subheader("🤖 Predicción de Ánimo (ML)")
+        X = df_vis[["sueno"]].fillna(0)
+        y = df_vis["animo"]
+        if len(X) > 3:
+            model = LinearRegression().fit(X, y)
+            st.markdown(f"Coeficiente sueño: {model.coef_[0]:.2f} — Intercepto: {model.intercept_:.2f}")
 
-        vegetales_semana = set()
-        for entrada in df_semana["comida"].dropna():
-            vegetales_semana.update([
-                item.strip().lower() for item in entrada.split(",")
-                if item.strip().lower() in vegetales_validos
-            ])
+        # --- ML: Clustering perfiles ---
+        st.subheader("👥 Clusters de Usuarios")
+        features = df_vis[["diversidad_diaria", "sueno"]].dropna()
+        if len(features) >= 3:
+            kmeans = KMeans(n_clusters=2, n_init='auto').fit(features)
+            df_vis["cluster"] = kmeans.labels_
+            fig3 = px.scatter(df_vis, x="diversidad_diaria", y="sueno", color="cluster", hover_data=["fecha"])
+            st.plotly_chart(fig3, use_container_width=True)
 
-        progreso = len(vegetales_semana)
-        total = 30
-        st.markdown(f"Esta semana has comido **{progreso} / 30** vegetales diferentes.")
-        st.markdown("🟩" * progreso + "⬜" * (total - progreso))
+        # --- Export CSV ---
+        st.subheader("📤 Exportar datos")
+        buffer = io.StringIO()
+        df.to_csv(buffer, index=False)
+        st.download_button("⬇️ Descargar CSV", buffer.getvalue(), file_name="registro_nutribio.csv", mime="text/csv")
 
-        # --- Sugerencias ---
-        st.markdown("---")
-        st.subheader("💡 Sugerencias para hoy")
-        sugerencias = sorted(list(vegetales_validos - vegetales_semana))[:5]
-        if sugerencias:
-            st.markdown("🌟 Prueba algo nuevo:")
-            st.markdown(", ".join(sugerencias))
-        else:
-            st.success("🎉 ¡Ya has probado 30 vegetales distintos esta semana!")
+# --- Main App ---
+def main():
+    sheet = get_sheet()
+    with st.form("registro"):
+        st.subheader("📋 Registro diario")
+        seleccionados = st.multiselect("¿Qué comiste hoy?", options=todos_alimentos)
+        sueno = st.number_input("¿Horas de sueño?", min_value=0.0, max_value=24.0, step=0.5)
+        ejercicio = st.text_input("¿Ejercicio realizado?")
+        animo = st.slider("¿Cómo te sientes hoy?", 1, 5, 3)
+        submitted = st.form_submit_button("Guardar")
+        if submitted:
+            fecha = datetime.now().date()
+            guardar_registro(sheet, fecha, seleccionados, sueno, ejercicio, animo)
+            st.success("✅ Registro y diversidad guardados correctamente.")
 
-except Exception as e:
-    st.warning(f"No se pudieron cargar los datos: {e}")
+    try:
+        data = sheet.get_all_records()
+        df = pd.DataFrame(data)
+        if not df.empty:
+            mostrar_registros(df)
+    except Exception as e:
+        st.warning(f"No se pudieron cargar los datos: {e}")
+
+if __name__ == "__main__":
+    main()
+
+
