@@ -122,9 +122,23 @@ with st.form("registro"):
                 categorias_contadas[cat] = 1
 
         os.makedirs("data", exist_ok=True)
-        with open("data/habitos.csv", "a", newline="", encoding="utf-8-sig") as f:
-            writer = csv.writer(f)
-            writer.writerow([fecha, ", ".join(seleccionados), sueno, ejercicio, animo] + list(categorias_contadas.values()))
+        # Asegúrate de que la carpeta existe
+os.makedirs("habitos", exist_ok=True)
+
+# Archivo de destino
+archivo_csv = "data/habitos.csv"
+
+# Datos a guardar
+registro = [fecha, ", ".join(seleccionados), sueno, ejercicio, animo] + list(categorias_contadas.values())
+
+# Escribe encabezados si el archivo no existe
+es_nuevo = not os.path.exists(archivo_csv)
+with open(archivo_csv, "a", newline="", encoding="utf-8-sig") as f:
+    writer = csv.writer(f)
+    if es_nuevo:
+        encabezados = ["fecha", "comida", "sueno", "ejercicio", "animo"] + list(categorias.keys())
+        writer.writerow(encabezados)
+    writer.writerow(registro)
 
         st.success("✅ Registro guardado correctamente.")
         # ------------------------------
@@ -359,4 +373,5 @@ if not df.empty:
     st.markdown(f"🌿 Esta semana has consumido **{len(grupos_vegetales)} / 30** vegetales distintos.")
 else:
     st.info("Aún no hay datos registrados esta semana.")
+
 
