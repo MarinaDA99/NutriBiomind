@@ -95,8 +95,14 @@ def guardar_registro(sheet, fecha, seleccionados, sueno, ejercicio, animo):
 
 # --- Guardar resumen semanal ---
 def guardar_resumen_semanal(sheet, fecha):
-    data = sheet.get_all_records()
-    df = pd.DataFrame(data)
+        values = sheet.get_all_values()
+        if values:
+            headers = values[0]
+            if len(set(headers)) < len(headers):
+                st.error("❌ Encabezados duplicados en Google Sheets. Corrige los títulos de columna.")
+                return
+            df = pd.DataFrame(values[1:], columns=headers)
+
     df["fecha"] = pd.to_datetime(df["fecha"]).dt.date
     inicio_semana = fecha - timedelta(days=7)
     semana_df = df[(df["fecha"] >= inicio_semana) & (df["tipo"] == "registro")]
