@@ -1,29 +1,26 @@
-import pandas as pd
 import streamlit as st
+import pandas as pd
 import csv
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
+import json
+import streamlit as st
+from oauth2client.service_account import ServiceAccountCredentials
+import gspread
 
-st.set_page_config(page_title="NutriBioMind", layout="centered")
-st.title("🌱 La regla de oro para una microbiota saludable: 30 plantas por semana")
+scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 
-from PIL import Image
-
-# Cargar el logo
-logo = Image.open("logo.png")
-
-# Mostrar logo y nombre juntos en dos columnas
-col1, col2 = st.columns([1, 5])
-with col1:
-    st.image(logo, width=80)
-with col2:
-    st.markdown("## **NutriBiomind**")
-    st.markdown("#### 🌿 Tu guía hacia una microbiota saludable")
+# Cargar desde secrets
+creds_dict = json.loads(st.secrets["gcp_service_account"])
+creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+client = gspread.authorize(creds)
 
 
-# ------------------------------
-# CATEGORÍAS Y ALIMENTOS
-# ------------------------------
+# --- Configuración de la página ---
+st.set_page_config(page_title="Dieta vegetal 30x", layout="centered")
+st.title("🌱 La regla de oro: ¡30 plantas distintas por semana!")
+
+# --- Diccionario de categorías y alimentos ---
 categorias = {
     "🥦 Verduras y hortalizas": ["acelga", "apio", "berenjena", "brócoli", "calabacín", "calabaza", "cardo", "cebolla", "cebolleta", "col blanca", "col de Bruselas", "col lombarda", "col rizada (kale)", "coliflor", "endibia", "escarola", "espárrago", "espinaca", "hinojo", "judía verde", "lechuga romana", "lechuga iceberg", "nabo", "pepino", "pimiento rojo", "pimiento verde", "puerro", "rábano", "remolacha", "tomate", "zanahoria", "alcachofa", "chirivía", "boniato (batata)", "patata", "ñame", "taro", "malanga", "yuca", "okra", "pak choi", "berza", "acedera", "mostaza verde", "diente de león (hojas)", "berro", "canónigos", "mizuna", "tatsoi", "escarola rizada"],
   "🍎 Frutas": ["manzana", "pera", "plátano", "naranja", "mandarina", "kiwi", "uva", "granada", "fresa", "frambuesa", "mora", "arándano", "cereza", "melocotón", "albaricoque", "ciruela", "mango", "papaya", "piña", "melón", "sandía", "higo", "caqui", "lichi", "maracuyá", "guayaba", "chirimoya", "carambola", "níspero", "pomelo", "lima", "limón", "coco", "aguacate", "tomate cherry", "grosella", "zarzamora", "mandarino", "plátano macho", "dátil"],
@@ -74,8 +71,7 @@ categorias = {
   "menta", "hierbabuena", "romero", "tomillo", "orégano", "psyllium", "inulina pura", "semillas de cáñamo", "semillas de sésamo",
   "semillas de calabaza", "semillas de girasol", "pipas con cáscara", "maíz cocido", "cuscús integral"]
 }
-
-# Define las categorías que cuentan como vegetales
+# --- Grupos válidos como vegetales ---
 grupos_vegetales = [
     "🥦 Verduras y hortalizas",
     "🍎 Frutas",
@@ -84,290 +80,85 @@ grupos_vegetales = [
     "🌾 Cereales y pseudocereales"
 ]
 
-# Construye un set de alimentos válidos (en minúsculas)
+# --- Set de alimentos vegetales válidos ---
 vegetales_validos = set()
 for grupo in grupos_vegetales:
     if grupo in categorias:
         vegetales_validos.update([a.lower() for a in categorias[grupo]])
-    else:
-        st.warning(f"Categoría no encontrada en 'categorias': {grupo}")
 
-
-
-
+# --- Lista de todos los alimentos (para multiselect) ---
 todos_alimentos = sorted({item for sublist in categorias.values() for item in sublist})
 
-# ------------------------------
-# REGISTRO DIARIO
-# ------------------------------
+# --- Formulario diario ---
 with st.form("registro"):
     st.subheader("📋 Registro diario")
-
-    seleccionados = st.multiselect(
-        "Selecciona los alimentos que comiste hoy:",
-        options=todos_alimentos,
-        help="Puedes seleccionar varios (usa Ctrl/Cmd)"
-    )
-
-    sueno = st.number_input("¿Cuántas horas dormiste?", min_value=0.0, max_value=24.0, step=0.5)
-    ejercicio = st.text_input("¿Ejercicio realizado (ej: 30 min caminata)?")
+    seleccionados = st.multiselect("¿Qué comiste hoy?", options=todos_alimentos)
+    sueno = st.number_input("¿Horas de sueño?", min_value=0.0, max_value=24.0, step=0.5)
+    ejercicio = st.text_input("¿Ejercicio realizado?")
     animo = st.slider("¿Cómo te sientes hoy?", 1, 5, 3)
     submitted = st.form_submit_button("Guardar")
 
     if submitted:
         fecha = datetime.now().strftime('%Y-%m-%d')
-        categorias_contadas = {cat: 0 for cat in categorias}
-        for cat, items in categorias.items():
-            if any(item.lower() in [s.lower() for s in seleccionados] for item in items):
-                categorias_contadas[cat] = 1
+        os.makedirs("data", exist_ok=True)
+        archivo_csv = "data/habitos.csv"
+        registro = [fecha, ", ".join(seleccionados), sueno, ejercicio, animo]
+        nuevo = not os.path.exists(archivo_csv)
 
+        with open(archivo_csv, "a", newline="", encoding="utf-8-sig") as f:
+            writer = csv.writer(f)
+            if nuevo:
+                writer.writerow(["fecha", "comida", "sueno", "ejercicio", "animo"])
+            writer.writerow(registro)
 
-        # Asegúrate de que la carpeta existe
-# Save new data with headers if the file doesn't exist
-os.makedirs("data", exist_ok=True)
+        st.success("✅ Registro guardado correctamente.")
+
+# --- Cargar datos ---
 archivo_csv = "data/habitos.csv"
-fecha = datetime.now().strftime('%Y-%m-%d')
-registro = [fecha, ", ".join(seleccionados), sueno, ejercicio, animo] + list(categorias_contadas.values())
-es_nuevo = not os.path.exists(archivo_csv)
+if os.path.exists(archivo_csv):
+    df = pd.read_csv(archivo_csv, encoding="utf-8-sig")
+    if not df.empty:
+        df.columns = ["fecha", "comida", "sueno", "ejercicio", "animo"]
+        df["fecha"] = pd.to_datetime(df["fecha"]).dt.date
 
-with open(archivo_csv, "a", newline="", encoding="utf-8-sig") as f:
-    writer = csv.writer(f)
-    if es_nuevo:
-        encabezados = ["fecha", "comida", "sueno", "ejercicio", "animo"] + list(categorias.keys())
-        writer.writerow(encabezados)
-        writer.writerow(registro)
+        # --- Mostrar vegetales únicos por día ---
+        st.markdown("---")
+        st.subheader("📅 Vegetales únicos por día")
+        for fecha, grupo in df.groupby("fecha"):
+            diarios = set()
+            for entrada in grupo["comida"].dropna():
+                diarios.update([
+                    item.strip().lower() for item in entrada.split(",")
+                    if item.strip().lower() in vegetales_validos
+                ])
+            st.markdown(f"📆 **{fecha}**: {len(diarios)} vegetales: {', '.join(sorted(diarios))}")
 
-        # ------------------------------
-        # 🌿 Cálculo de vegetales únicos esta semana (desde el lunes)
-        # ------------------------------
-        try:
-            df = pd.read_csv("data/habitos.csv", header=None)
-            df.columns = ["fecha", "comida", "sueno", "ejercicio", "animo"] + list(categorias.keys())
-            df["fecha"] = pd.to_datetime(df["fecha"])
+        # --- Análisis semanal ---
+        st.markdown("---")
+        st.subheader("🌿 Diversidad vegetal semanal")
+        inicio_semana = datetime.now().date() - timedelta(days=datetime.now().weekday())
+        df_semana = df[df["fecha"] >= inicio_semana]
 
-            # Filtrar desde el lunes de esta semana
-            inicio_semana = datetime.now() - timedelta(days=datetime.now().weekday())
-            df_semana = df[df["fecha"] >= inicio_semana]
+        vegetales_semana = set()
+        for entrada in df_semana["comida"].dropna():
+            vegetales_semana.update([
+                item.strip().lower() for item in entrada.split(",")
+                if item.strip().lower() in vegetales_validos
+            ])
 
-            # Juntar todos los alimentos de la semana
-            alimentos_semana = set()
-            for entry in df_semana["comida"].dropna():
-                for alimento in entry.split(","):
-                    alimento_limpio = alimento.strip().lower()
-                    if alimento_limpio in vegetales_validos:
-                        alimentos_semana.add(alimento_limpio)
+        progreso = len(vegetales_semana)
+        total = 30
+        st.markdown(f"Esta semana has comido **{progreso} / 30** vegetales diferentes.")
+        st.markdown("🟩" * progreso + "⬜" * (total - progreso))
 
-            # Mostrar progreso semanal
-            total_objetivo = 30
-            progreso = len(alimentos_semana)
-            total_objetivo = 30
-            bloques_llenos = "🟩" * progreso
-            bloques_vacios = "⬜" * (total_objetivo - progreso)
-
-
-
-        except Exception as e:
-            st.info("No se pudo calcular la diversidad vegetal aún.")
-
-        # ------------------------------
-        # 🌿 Diversidad vegetal semanal tras registrar
-        # ------------------------------
-        try:
-            df = pd.read_csv("data/habitos.csv", header=None)
-            df.columns = ["fecha", "comida", "sueno", "ejercicio", "animo"] + list(categorias.keys())
-            df["fecha"] = pd.to_datetime(df["fecha"])
-
-            # Solo datos desde el lunes
-            inicio_semana = datetime.now() - timedelta(days=datetime.now().weekday())
-            df_semana = df[df["fecha"] >= inicio_semana]
-
-            # Juntar alimentos únicos
-            alimentos_semana = set()
-            for entry in df_semana["comida"].dropna():
-                for alimento in entry.split(","):
-                    alimentos_semana.add(alimento.strip().lower())
-
-            # Vegetales objetivo para contar progreso
-            vegetales_objetivo = [
-  # Frutas
-  "mandarinas", "naranjas", "kiwi", "uva", "manzanas", "peras", "granada", "plátanos", "fresas", "frambuesas",
-  "moras", "arándanos", "cerezas", "melocotón", "albaricoques", "ciruelas", "mango", "papaya", "piña", "melón",
-  "sandía", "higos", "caquis", "lichi", "maracuyá", "guayaba", "chirimoya", "carambola", "níspero", "pomelo",
-  "lima", "limón", "coco", "aguacate", "tomate cherry", "grosellas", "zarzamoras", "plátano macho", "dátiles",
-
-  # Verduras y hortalizas
-  "judía tierna", "nabo", "col", "col de Bruselas", "coliflor", "puerro", "apio", "acelgas", "espinacas", "brécol",
-  "escarola", "endibia", "rábanos", "ajos tiernos", "alcachofa", "chirivía", "espárragos", "zanahorias", "calabaza",
-  "calabacín", "cardo", "cebolla", "cebolleta", "col blanca", "col lombarda", "col rizada (kale)", "hinojo",
-  "lechuga romana", "lechuga iceberg", "pepino", "pimiento rojo", "pimiento verde", "remolacha", "tomate", "boniato",
-  "patata", "ñame", "taro", "malanga", "yuca", "okra", "pak choi", "berza", "acedera", "mostaza verde",
-  "diente de león", "berros", "canónigos", "mizuna", "tatsoi",
-
-  # Setas y hongos
-  "champiñones", "shiitakes", "gírgolas", "maitake", "enoki", "portobello", "rebozuelo", "trompeta de la muerte",
-  "seta de cardo", "seta de chopo", "seta de pie azul", "seta de pino", "seta de haya", "seta de álamo",
-  "seta de abedul", "seta de roble",
-
-  # Legumbres
-  "lentejas", "garbanzos", "judías", "habas", "guisantes", "azukis", "soja", "judía blanca", "judía roja",
-  "judía negra", "mungo", "lupino", "alubia pinta", "alubia canela", "alubia carilla", "alubia de Lima",
-  "alubia de riñón", "alubia moteada", "alubia escarlata", "alubia borlotti", "alubia navy",
-
-  # Frutos secos y semillas
-  "almendras", "avellanas", "nueces", "nueces de Brasil", "nueces de macadamia", "piñones", "pistachos", "anacardos",
-  "cacahuetes", "pipas de calabaza", "pipas de girasol", "semillas de sésamo", "semillas de chía", "linaza",
-  "semillas de lino", "semillas de amapola", "semillas de cáñamo", "semillas de alcaravea", "semillas de hinojo",
-  "semillas de mostaza", "semillas de albahaca", "semillas de comino", "semillas de coriandro", "semillas de anís",
-  "semillas de cardamomo", "semillas de nigella", "semillas de fenogreco", "semillas de ajonjolí negro",
-
-  # Granos, cereales y tubérculos
-  "trigo", "avena", "cebada", "centeno", "arroz", "maíz", "alforfón", "amaranto", "teff", "mijo", "quinoa",
-  "espelta", "kamut", "sorgo", "farro", "freekeh", "bulgur", "candeal", "arroz salvaje", "moniato", "tupinambo"
-]
-            grupos_vegetales = [
-                "🥦 Verduras y hortalizas",
-                "🍎 Frutas",
-                "🫘 Legumbres",
-                "🌰 Frutos secos y semillas",
-                "🌾 Cereales y pseudocereales"
-            ]
-            vegetales_validos = set()
-            for grupo in grupos_vegetales:
-                vegetales_validos.update([a.lower() for a in categorias[grupo]])
-
-            consumidos = [v for v in vegetales_objetivo if v in alimentos_semana]
-            progreso = len(consumidos)
-            total = 30
-
-            bloques_llenos = "🟩" * progreso
-            bloques_vacios = "⬜" * (total - progreso)
-
-            # Mostrar progreso único con cuadritos
-            total_objetivo = 30
-            alimentos_vegetales = [a for a in alimentos_semana if a in vegetales_validos]
-            progreso = len(set(alimentos_vegetales))
-
-            bloques_llenos = "🟩" * progreso
-            bloques_vacios = "⬜" * (total_objetivo - progreso)
-
-            st.markdown("### 🌿 Diversidad vegetal esta semana")
-            st.markdown(f"{bloques_llenos}{bloques_vacios}")
-
-        except Exception as e:
-            st.info("No se pudo calcular la diversidad vegetal aún.")
-
-            # Lista completa de vegetales (puedes expandirla)
-            vegetales_objetivo = [
-                "acelga", "apio", "berenjena", "brócoli", "calabacín", "calabaza", "cardo", "cebolla", "cebolleta", "col blanca", "col de Bruselas", "col lombarda", "col rizada (kale)", "coliflor", "endibia", "escarola", "espárrago", "espinaca", "hinojo", "judía verde", "lechuga romana", "lechuga iceberg", "nabo", "pepino", "pimiento rojo", "pimiento verde", "puerro", "rábano", "remolacha", "tomate", "zanahoria", "alcachofa", "chirivía", "boniato (batata)", "patata", "ñame", "taro", "malanga", "yuca", "okra", "pak choi", "berza", "acedera", "mostaza verde", "diente de león (hojas)", "berro", "canónigos", "mizuna", "tatsoi", "escarola rizada",
-"manzana", "pera", "plátano", "naranja", "mandarina", "kiwi", "uva", "granada", "fresa", "frambuesa", "mora", "arándano", "cereza", "melocotón", "albaricoque", "ciruela", "mango", "papaya", "piña", "melón", "sandía", "higo", "caqui", "lichi", "maracuyá", "guayaba", "chirimoya", "carambola", "níspero", "pomelo", "lima", "limón", "coco", "aguacate", "tomate cherry", "grosella", "zarzamora", "mandarino", "plátano macho", "dátil",
-"almendra", "avellana", "nuez", "nuez de Brasil", "nuez de macadamia", "pistacho", "anacardo", "cacahuete", "pipa de girasol", "pipa de calabaza", "semilla de sésamo", "semilla de chía", "semilla de lino", "semilla de amapola", "semilla de cáñamo", "semilla de alcaravea", "semilla de hinojo", "semilla de mostaza", "semilla de albahaca", "semilla de comino", "semilla de coriandro", "semilla de anís", "semilla de cardamomo", "semilla de nigella", "semilla de fenogreco", "semilla de ajonjolí negro", "semilla de calabaza tostada", "semilla de girasol tostada", "semilla de lino dorado", "semilla de chía blanca",
-"lenteja", "garbanzo", "judía blanca", "judía roja", "judía negra", "habas", "guisantes", "soja", "azuki", "mungo", "lupino", "alubia pinta", "alubia canela", "alubia carilla", "alubia de Lima", "alubia de riñón", "alubia moteada", "alubia escarlata", "alubia borlotti", "alubia navy",
-"trigo integral", "avena", "cebada", "centeno", "arroz integral", "maíz", "quinoa", "amaranto", "mijo", "teff", "alforfón (trigo sarraceno)", "espelta", "kamut", "sorgo", "farro", "freekeh", "trigo bulgur", "trigo candeal", "trigo sarraceno tostado (kasha)", "arroz salvaje",
-"champiñón", "shiitake", "maitake", "gírgola (ostra)", "enoki", "portobello", "rebozuelo", "trompeta de la muerte", "seta de cardo", "seta de chopo", "seta de pie azul", "seta de pino", "seta de haya", "seta de álamo", "seta de abedul", "seta de roble", "seta de caoba", "seta de castaño", "seta de aliso", "seta de fresno",
-"albahaca", "perejil", "cilantro", "menta", "hierbabuena", "romero", "tomillo", "orégano", "salvia", "estragón", "eneldo", "cebollino", "laurel", "mejorana", "ajedrea", "lemongrass", "curry (hojas)", "hoja de lima kaffir", "hoja de laurel indio",
-"ajo crudo", "cebolla cruda", "alcachofa de Jerusalén", "plátano verde", "achicoria", "diente de león (hojas y raíz)", "raíz de yacón", "salvado de trigo", "manzana con piel", "patata cocida y enfriada"
-            ]
-
-            # Leer los alimentos únicos consumidos esta semana
-            def cargar_datos():
-                try:
-                    df = pd.read_csv("data/habitos.csv", header=None, encoding="utf-8-sig")
-                    df.columns = ["fecha", "comida", "sueno", "ejercicio", "animo"] + list(categorias.keys())
-                    df["fecha"] = pd.to_datetime(df["fecha"], errors='coerce')
-                    return df
-                except Exception as e:
-                    st.warning(f"No se pudo cargar el archivo CSV: {e}")
-                    return pd.DataFrame()
-
-            df = cargar_datos()
-
-            # Filtrar solo desde el lunes
-            inicio_semana = datetime.now() - timedelta(days=datetime.now().weekday())
-            df_semana = df[df["fecha"] >= inicio_semana]
-
-            # Agrupar todos los alimentos
-            alimentos_semana = set()
-            for entry in df_semana["comida"].dropna():
-                for alimento in entry.split(","):
-                    alimentos_semana.add(alimento.strip().lower())
-
-            consumidos = [v for v in vegetales_objetivo if v in alimentos_semana]
-            faltantes = [v for v in vegetales_objetivo if v not in alimentos_semana]
-
-            total = 30
-            progreso = len(consumidos)
-            bloques_llenos = "🟩" * progreso
-            bloques_vacios = "⬜" * (total - progreso)
-
-            st.markdown(f"### 🌱 Diversidad vegetal semanal")
-            st.markdown(f"**{progreso}/30 vegetales distintos esta semana**")
-            st.markdown(f"{bloques_llenos}{bloques_vacios}")
-
-            if faltantes:
-                with st.expander("Ver vegetales que aún puedes añadir"):
-                    st.write(", ".join(faltantes))
-
-        except Exception as e:
-            st.info("No se pudo calcular la diversidad vegetal aún.")
-
-        # --- CONSEJOS ---
-        if sueno < 6:
-            st.warning("😴 Has dormido poco. Intenta descansar al menos 7-8 horas.")
-        elif sueno > 10:
-            st.warning("🛌 Dormiste mucho. Evalúa si estás recuperando energía o sintiéndote fatigada.")
-
-        if ejercicio:
-            try:
-                minutos = int("".join(filter(str.isdigit, ejercicio)))
-                if minutos < 30:
-                    st.info("🏃‍♀️ Intenta hacer al menos 30 minutos de actividad física diaria.")
-                elif minutos > 180:
-                    st.warning("⚠️ Demasiado ejercicio puede causar fatiga. Escucha a tu cuerpo.")
-            except:
-                st.info("No se pudo interpretar el tiempo de ejercicio.")
-
-        # Faltantes importantes
-        esenciales = ["🥦 Verduras y hortalizas", "🍎 Frutas", "🦠 PROBIÓTICOS", "🌱 PREBIÓTICOS"]
-        faltantes = [cat for cat in esenciales if categorias_contadas.get(cat, 0) == 0]
-        if faltantes:
-            st.warning("👉 Hoy no consumiste: " + ", ".join(faltantes))
+        # --- Sugerencias ---
+        st.markdown("---")
+        st.subheader("💡 Sugerencias para hoy")
+        sugerencias = sorted(list(vegetales_validos - vegetales_semana))[:5]
+        if sugerencias:
+            st.markdown("🎯 Prueba algo nuevo:")
+            st.markdown(", ".join(sugerencias))
         else:
-            st.success("✅ ¡Incluiste todos los grupos clave!")
-
-        st.markdown("💡 **Tip útil:** Lo ideal es combinar probióticos + prebióticos en una misma comida. Ejemplo: yogur natural con plátano o kéfir con avena y manzana rallada.")
-
-# ------------------------------
-# ANÁLISIS SEMANAL
-# ------------------------------
-st.markdown("---")
-st.subheader("📈 Análisis semanal")
-
-def leer_datos():
-    try:
-        df = pd.read_csv("data/habitos.csv", header=None, encoding='utf-8-sig')
-        df.columns = ["fecha", "comida", "sueno", "ejercicio", "animo"] + list(categorias.keys())
-        df["fecha"] = pd.to_datetime(df["fecha"])
-        return df
-    except:
-        return pd.DataFrame()
-
-df = leer_datos()
-if not df.empty:
-    inicio_semana = datetime.now() - timedelta(days=datetime.now().weekday())
-    df_semana = df[df["fecha"] >= inicio_semana]
-
-    # Mostrar gráfico de categorías ✅/❌ por semana
-    suma_cat = df_semana[list(categorias.keys())].sum()
-    st.bar_chart(suma_cat)
-
-    # Contar diversidad de alimentos vegetales (únicos)
-    alimentos_semana = set()
-    for entry in df_semana["comida"]:
-        for alimento in entry.split(","):
-            alimentos_semana.add(alimento.strip().lower())
-
-    st.markdown(f"🌿 Esta semana has consumido **{len(grupos_vegetales)} / 30** vegetales distintos.")
+            st.success("🎉 ¡Ya has probado 30 vegetales distintos esta semana!")
 else:
-    st.info("Aún no hay datos registrados esta semana.")
-
-
+    st.info("Aún no has registrado comidas.")
