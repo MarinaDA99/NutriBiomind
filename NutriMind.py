@@ -16,6 +16,13 @@ creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
 client = gspread.authorize(creds)
 
 
+try:
+    sheet = client.open("habitos_microbiota").sheet1
+    st.success("✅ ¡Conexión a Google Sheets exitosa!")
+except Exception as e:
+    st.error(f"❌ Error al conectar con Google Sheets: {e}")
+
+
 # --- Configuración de la página ---
 st.set_page_config(page_title="Dieta vegetal 30x", layout="centered")
 st.title("🌱 La regla de oro: ¡30 plantas distintas por semana!")
