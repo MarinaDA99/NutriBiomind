@@ -26,11 +26,6 @@ try:
 except Exception as e:
     st.error(f"❌ Error al conectar con Google Sheets: {e}")
 
-
-# --- Configuración de la página ---
-st.set_page_config(page_title="Dieta vegetal 30x", layout="centered")
-st.title("🌱 La regla de oro: ¡30 plantas distintas por semana!")
-
 # --- Diccionario de categorías y alimentos ---
 categorias = {
     "🥦 Verduras y hortalizas": ["acelga", "apio", "berenjena", "brócoli", "calabacín", "calabaza", "cardo", "cebolla", "cebolleta", "col blanca", "col de Bruselas", "col lombarda", "col rizada (kale)", "coliflor", "endibia", "escarola", "espárrago", "espinaca", "hinojo", "judía verde", "lechuga romana", "lechuga iceberg", "nabo", "pepino", "pimiento rojo", "pimiento verde", "puerro", "rábano", "remolacha", "tomate", "zanahoria", "alcachofa", "chirivía", "boniato (batata)", "patata", "ñame", "taro", "malanga", "yuca", "okra", "pak choi", "berza", "acedera", "mostaza verde", "diente de león (hojas)", "berro", "canónigos", "mizuna", "tatsoi", "escarola rizada"],
