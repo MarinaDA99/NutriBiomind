@@ -126,6 +126,7 @@ with st.form("registro"):
 # Save new data with headers if the file doesn't exist
 os.makedirs("data", exist_ok=True)
 archivo_csv = "data/habitos.csv"
+fecha = datetime.now().strftime('%Y-%m-%d')
 registro = [fecha, ", ".join(seleccionados), sueno, ejercicio, animo] + list(categorias_contadas.values())
 es_nuevo = not os.path.exists(archivo_csv)
 
