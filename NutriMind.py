@@ -125,13 +125,18 @@ if os.path.exists(archivo_csv):
         st.markdown("---")
         st.subheader("📅 Vegetales únicos por día")
         for fecha, grupo in df.groupby("fecha"):
-            diarios = set()
-            for entrada in grupo["comida"].dropna():
-                diarios.update([
-                    item.strip().lower() for item in entrada.split(",")
-                    if item.strip().lower() in vegetales_validos
-                ])
-            st.markdown(f"📆 **{fecha}**: {len(diarios)} vegetales: {', '.join(sorted(diarios))}")
+        diarios = set()  # Asegúrate de inicializar aquí
+
+        for entrada in grupo["comida"].dropna():
+            if isinstance(entrada, str):  # Evita errores si no es texto
+            items = entrada.split(",")
+                for item in items:
+                item_clean = item.strip().lower()
+                    if item_clean in vegetales_validos:
+                    diarios.add(item_clean)
+
+        st.markdown(f"📆 **{fecha}**: {len(diarios)} vegetales: {', '.join(sorted(diarios))}")
+
 
         # --- Análisis semanal ---
         st.markdown("---")
