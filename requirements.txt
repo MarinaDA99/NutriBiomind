@@ -5,3 +5,4 @@ scikit-learn
 plotly
 gspread
 oauth2client
+google-cloud-vision
