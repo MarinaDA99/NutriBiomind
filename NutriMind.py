@@ -10,6 +10,7 @@ from sklearn.linear_model import LinearRegression
 from sklearn.cluster import KMeans
 import numpy as np
 import io
+from google.cloud import vision
 
 
 st.set_page_config(page_title="NutriBioMind", layout="centered")
@@ -24,7 +25,6 @@ creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
 def get_sheet():
     client = gspread.authorize(creds)
     return client.open("habitos_microbiota").sheet1
-    from google.cloud import vision
 import base64
 
 def detectar_vegetales_google_vision(image_file, categorias):
@@ -235,7 +235,8 @@ st.subheader("📸 Detección automática de vegetales desde una foto")
 
 img_file = st.file_uploader("Sube una foto de tu comida", type=["jpg", "jpeg", "png"])
 if img_file:
-    st.image(img_file, caption="Tu imagen", use_column_width=True)
+    st.image(img_file, caption="Tu imagen", use_container_width=True)
+
     posibles_vegetales = detectar_vegetales_google_vision(img_file, categorias)
 
     if posibles_vegetales:
