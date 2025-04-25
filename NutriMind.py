@@ -11,6 +11,7 @@ from sklearn.cluster import KMeans
 import numpy as np
 import io
 
+
 st.set_page_config(page_title="NutriBioMind", layout="centered")
 st.title("🌱 La regla de oro: ¡30 plantas distintas por semana!")
 
@@ -23,6 +24,27 @@ creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
 def get_sheet():
     client = gspread.authorize(creds)
     return client.open("habitos_microbiota").sheet1
+    from google.cloud import vision
+import base64
+
+def detectar_vegetales_google_vision(image_file, categorias):
+    client = vision.ImageAnnotatorClient()
+
+    content = image_file.read()
+    image = vision.Image(content=content)
+
+    response = client.label_detection(image=image)
+    labels = response.label_annotations
+
+    posibles = set()
+    for label in labels:
+        nombre = label.description.lower()
+        for categoria, items in categorias.items():
+            for vegetal in items:
+                if vegetal.lower() in nombre:
+                    posibles.add(vegetal.lower())
+    return sorted(posibles)
+
 
 # --- Datos de categorías (resumido) ---
 categorias = {
@@ -208,5 +230,21 @@ def main():
 
 if __name__ == "__main__":
     main()
+st.markdown("---")
+st.subheader("📸 Detección automática de vegetales desde una foto")
+
+img_file = st.file_uploader("Sube una foto de tu comida", type=["jpg", "jpeg", "png"])
+if img_file:
+    st.image(img_file, caption="Tu imagen", use_column_width=True)
+    posibles_vegetales = detectar_vegetales_google_vision(img_file, categorias)
+
+    if posibles_vegetales:
+        seleccion = st.multiselect("¿Cuáles están realmente en tu comida?", posibles_vegetales)
+        if st.button("✅ Confirmar vegetales detectados"):
+            fecha = datetime.now().date()
+            guardar_registro(get_sheet(), fecha, seleccion, sueno=0, ejercicio="", animo=3)
+            st.success("Vegetales confirmados y guardados.")
+    else:
+        st.warning("🤔 No se detectaron vegetales. Prueba con otra foto.")
 
 
