@@ -11,6 +11,8 @@ from sklearn.cluster import KMeans
 import numpy as np
 import io
 from google.cloud import vision
+import base64
+
 
 
 st.set_page_config(page_title="NutriBioMind", layout="centered")
@@ -25,7 +27,6 @@ creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
 def get_sheet():
     client = gspread.authorize(creds)
     return client.open("habitos_microbiota").sheet1
-import base64
 
 def detectar_vegetales_google_vision(image_file, categorias):
     client = vision.ImageAnnotatorClient()
