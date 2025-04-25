@@ -17,7 +17,7 @@ st.title("🌱 La regla de oro: ¡30 plantas distintas por semana!")
 
 # --- Inicialización de credenciales ---
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-creds_dict = json.loads(st.secrets["gcp_service_account"])
+creds_dict = st.secrets["gcp_service_account"]
 creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
 
 # --- Conectar a Google Sheets ---
