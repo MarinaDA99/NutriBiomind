@@ -23,6 +23,12 @@ scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/au
 creds_dict = st.secrets["gcp_service_account"]
 creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
 
+from google.cloud import vision
+
+client = vision.ImageAnnotatorClient()
+print(client)
+
+
 # --- Conectar a Google Sheets ---
 def get_sheet():
     client = gspread.authorize(creds)
