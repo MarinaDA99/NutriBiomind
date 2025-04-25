@@ -40,11 +40,12 @@ def detectar_vegetales_google_vision(image_file, categorias):
     posibles = set()
     for label in labels:
         nombre = label.description.lower()
-        for categoria, items in categorias.items():
+        for grupo, items in categorias.items():
             for vegetal in items:
                 if vegetal.lower() in nombre:
                     posibles.add(vegetal.lower())
     return sorted(posibles)
+
 
 
 # --- Datos de categorías (resumido) ---
@@ -209,6 +210,8 @@ def mostrar_registros(df):
 # --- Main App ---
 def main():
     sheet = get_sheet()
+
+    # --- Registro manual ---
     with st.form("registro"):
         st.subheader("📋 Registro diario")
         seleccionados = st.multiselect("¿Qué comiste hoy?", options=todos_alimentos)
@@ -221,6 +224,7 @@ def main():
             guardar_registro(sheet, fecha, seleccionados, sueno, ejercicio, animo)
             st.success("✅ Registro y diversidad guardados correctamente.")
 
+    # --- Visualización de registros ---
     try:
         data = sheet.get_all_records()
         df = pd.DataFrame(data)
@@ -229,24 +233,28 @@ def main():
     except Exception as e:
         st.warning(f"No se pudieron cargar los datos: {e}")
 
+    # --- Detección automática con imagen ---
+    st.markdown("---")
+    st.subheader("📸 Detección automática de vegetales desde una foto")
+
+    img_file = st.file_uploader("Sube una foto de tu comida", type=["jpg", "jpeg", "png"])
+    if img_file:
+        st.image(img_file, caption="Tu imagen", use_container_width=True)
+
+        img_file.seek(0)  # Reiniciar lectura
+        posibles_vegetales = detectar_vegetales_google_vision(img_file, categorias)
+
+        if posibles_vegetales:
+            seleccion = st.multiselect("¿Cuáles están realmente en tu comida?", posibles_vegetales)
+            if st.button("✅ Confirmar vegetales detectados"):
+                fecha = datetime.now().date()
+                guardar_registro(sheet, fecha, seleccion, sueno=0, ejercicio="", animo=3)
+                st.success("Vegetales confirmados y guardados.")
+        else:
+            st.warning("🤔 No se detectaron vegetales. Prueba con otra foto.")
+
+
 if __name__ == "__main__":
     main()
-st.markdown("---")
-st.subheader("📸 Detección automática de vegetales desde una foto")
-
-img_file = st.file_uploader("Sube una foto de tu comida", type=["jpg", "jpeg", "png"])
-if img_file:
-    st.image(img_file, caption="Tu imagen", use_container_width=True)
-
-    posibles_vegetales = detectar_vegetales_google_vision(img_file, categorias)
-
-    if posibles_vegetales:
-        seleccion = st.multiselect("¿Cuáles están realmente en tu comida?", posibles_vegetales)
-        if st.button("✅ Confirmar vegetales detectados"):
-            fecha = datetime.now().date()
-            guardar_registro(get_sheet(), fecha, seleccion, sueno=0, ejercicio="", animo=3)
-            st.success("Vegetales confirmados y guardados.")
-    else:
-        st.warning("🤔 No se detectaron vegetales. Prueba con otra foto.")
 
 
