@@ -1,9 +1,10 @@
 streamlit
 pandas
-numpy
-scikit-learn
-plotly
 gspread
 oauth2client
+plotly-express
+scikit-learn
+numpy
 google-cloud-vision
+google-auth  # Often a dependency of google-cloud-vision, but good to be explicit
 unidecode
