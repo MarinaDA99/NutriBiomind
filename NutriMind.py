@@ -31,50 +31,67 @@ except Exception as e:
 
 # --- Configuración de Clientes de Google Cloud ---
 
-# Credenciales para gspread (usa oauth2client)
-scope_gspread = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-creds_gspread = None # Se inicializará en el try-except
+# --- Configuración de Clientes de Google Cloud ---
 
-# Cliente para Google Vision (usa google-auth y ADC por defecto)
-vision_client = None # Se inicializará en el try-except
+# Cliente para gspread (usa oauth2client)
+creds_gspread = None
+
+# Cliente para Google Vision (usa google-auth)
+vision_client = None
 
 google_services_available = False # Bandera general para saber si los servicios están listos
 
 try:
-    # Esto debe ser el contenido JSON de tu clave de cuenta de servicio
-    creds_dict_from_secrets = st.secrets["gcp_service_account"]
+    # Esto debe ser el contenido JSON de tu clave de cuenta de servicio,
+    # almacenado como un string en los secretos de Streamlit.
+    creds_json_str = st.secrets["gcp_service_account"]
+    # Parsear el string JSON a un diccionario. Este es el formato que esperan las funciones de credenciales.
+    creds_info_dict = json.loads(creds_json_str)
 
-    # Inicializar credenciales para gspread
-    creds_gspread = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict_from_secrets, scope_gspread)
+    # 1. Inicializar credenciales para gspread
+    scope_gspread = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+    creds_gspread = ServiceAccountCredentials.from_json_keyfile_dict(creds_info_dict, scope_gspread)
+    # La autorización real de gspread (gspread.authorize) se hace en get_sheet()
 
-    # Inicializar cliente de Vision.
-    # Streamlit Cloud debería configurar ADC si el secreto gcp_service_account está correctamente formateado como JSON.
-    # El cliente de Vision usará estas credenciales automáticamente.
-    vision_client = vision.ImageAnnotatorClient()
+    # 2. Inicializar cliente de Vision con las credenciales cargadas explícitamente
+    # Se importa aquí para evitar un error si google-auth no estuviera instalado, aunque debería estarlo.
+    from google.oauth2 import service_account as google_service_account
 
-    google_services_available = True # Si las inicializaciones parecen exitosas
+    # Crear objeto de credenciales para las bibliotecas google-cloud-*
+    vision_credentials = google_service_account.Credentials.from_service_account_info(creds_info_dict)
+    vision_client = vision.ImageAnnotatorClient(credentials=vision_credentials)
+
+    # Si ambas inicializaciones parecen exitosas (sin excepciones hasta aquí)
+    google_services_available = True
+    # Puedes añadir un st.sidebar.success("Servicios de Google conectados.") para feedback visual.
 
 except KeyError:
-    st.error("La clave 'gcp_service_account' no se encontró en los secretos de Streamlit (secrets.toml). Asegúrate de haberla configurado correctamente con el contenido JSON de tu clave de cuenta de servicio.")
+    st.error("Error Crítico: La clave 'gcp_service_account' no se encontró en los secretos de Streamlit (secrets.toml). "
+             "Asegúrate de haberla configurado correctamente con el contenido COMPLETO y VÁLIDO de tu archivo JSON de clave de cuenta de servicio. "
+             "Las funciones de Google Sheets y Vision AI no estarán disponibles.")
+    # creds_gspread y vision_client seguirán siendo None
+except json.JSONDecodeError:
+    st.error("Error Crítico: El valor de 'gcp_service_account' en los secretos de Streamlit no es un JSON válido. "
+             "Por favor, copia y pega el contenido completo del archivo JSON de tu clave de cuenta de servicio. "
+             "Las funciones de Google Sheets y Vision AI no estarán disponibles.")
+    # creds_gspread y vision_client seguirán siendo None
+except ImportError:
+    st.error("Error Crítico: Faltan bibliotecas necesarias para la autenticación con Google ('google-auth'). "
+             "Asegúrate de que 'google-auth' y 'google-cloud-vision' están en tu archivo requirements.txt.")
     # creds_gspread y vision_client seguirán siendo None
 except Exception as e:
     st.error(f"Error al inicializar los servicios de Google: {e}. Algunas funciones podrían no estar disponibles.")
     # creds_gspread y vision_client podrían ser None o estar parcialmente inicializados
 
-# Asegúrate de que las funciones que usan estos clientes (get_sheet, detectar_vegetales_google_vision)
-# ahora usen 'creds_gspread' y el 'vision_client' global respectivamente, y que manejen el caso de que sean None.
-# Por ejemplo, en get_sheet():
-# def get_sheet():
-#   if not google_services_available or creds_gspread is None: # Cambiado de 'creds' a 'creds_gspread'
-#       st.warning("...")
-#       return None
-#   client_gspread = gspread.authorize(creds_gspread) # Usar creds_gspread
-#   # ...
+# El resto de tu código que depende de creds_gspread y vision_client
+# debe verificar si son None o si google_services_available es False antes de usarlos.
 
-# Y en detectar_vegetales_google_vision, ya usa el 'vision_client' global.
-# Solo asegúrate de que 'google_services_available' refleje el estado de ambos.
-# El 'if vision_client is None:' dentro de detectar_vegetales_google_vision ya maneja esto.
-# El print(client) original fue eliminado ya que era para depuración en consola.
+# Por ejemplo, en get_sheet():
+# Ya tienes una comprobación con `creds`, asegúrate que sea `creds_gspread`
+# Y considera también `google_services_available`
+
+# En detectar_vegetales_google_vision:
+# El `if vision_client is None:` que ya tienes es correcto.
 
 # --- Definiciones de Categorías y Alimentos ---
 categorias = {
