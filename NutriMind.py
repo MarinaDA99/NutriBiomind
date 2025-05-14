@@ -203,6 +203,7 @@ def check_and_create_headers(sheet):
 # CAMBIO: Usar el cliente global de vision y normalización de texto
 # --- Detección de vegetales con Google Vision AI ---
 # CAMBIO: Usar el cliente global de vision y normalización de texto
+# --- Detección de vegetales con Google Vision AI ---
 def detectar_vegetales_google_vision(image_file_content):
     if vision_client is None:
         st.warning("El cliente de Google Vision no está inicializado. No se pueden detectar vegetales.")
@@ -212,59 +213,69 @@ def detectar_vegetales_google_vision(image_file_content):
     try:
         response = vision_client.label_detection(image=image)
         labels = response.label_annotations
-    except Exception as e: # Catch potential errors during the API call itself
+    except Exception as e:
         st.error(f"Excepción al llamar a Google Vision API: {e}")
-        if hasattr(e, 'details'): # Some gRPC errors have details
+        if hasattr(e, 'details'):
              st.error(f"Detalles del error de API: {e.details()}")
         return []
 
-    # --- START OF ADDED DEBUGGING CODE ---
-    st.subheader("ℹ️ Información de Depuración de Vision API") # Added a subheader for clarity
     if response.error.message:
         st.error(f"Error devuelto por Google Vision API: {response.error.message}")
-        st.json({"vision_api_error_details": response.error}) # Show full error structure
-    
-    debug_labels_output = []
-    if labels: # Only process if labels exist
-        st.write("Etiquetas detectadas por Google Vision (antes del filtrado):")
-        for label in labels:
-            debug_labels_output.append({
-                "description_original": label.description,
-                "description_normalized": normalize_text(label.description),
-                "score": f"{label.score:.2f}" # Format score as string with 2 decimal places
-            })
-        st.json({"vision_api_raw_labels": debug_labels_output})
-    else:
+        # Consider logging response.error for more details if needed
+        return []
+
+    if not labels:
         st.info("Google Vision API no devolvió ninguna etiqueta para esta imagen.")
-    # --- END OF ADDED DEBUGGING CODE ---
+        return []
+
+    # --- START OF NEW MAPPING LOGIC ---
+    # This map translates normalized API labels to your app's normalized plant names
+    # Keys: common normalized labels from Vision API
+    # Values: the corresponding normalized plant name from your 'normalized_plant_food_items' set
+    api_label_to_my_plant_map = {
+        normalize_text("summer squash"): normalize_text("calabacín"),
+        normalize_text("zucchini"): normalize_text("calabacín"),
+        normalize_text("courgette"): normalize_text("calabacín"),
+        normalize_text("squash"): normalize_text("calabacín"), # Adding 'squash' but be aware it can be broad.
+                                                            # 'Summer squash' is more specific for zucchini.
+        normalize_text("cucumber"): normalize_text("pepino"), # Example for another item
+        # Add more mappings here as you discover them e.g.:
+        # normalize_text("bell pepper"): normalize_text("pimiento rojo"), # if pimiento rojo is a key item
+        # normalize_text("capsicum"): normalize_text("pimiento rojo"),
+        # normalize_text("potato"): normalize_text("patata"),
+        # normalize_text("tomato"): normalize_text("tomate"),
+    }
+    # --- END OF NEW MAPPING LOGIC ---
 
     posibles_vegetales_detectados_original_case = set()
-    if not response.error.message and labels: # Only proceed if no error and labels exist
-        for label in labels:
-            nombre_label_norm = normalize_text(label.description)
-            
-            # Lógica de coincidencia (puedes refinar esto más adelante)
-            # Intenta que coincida si el nombre normalizado de tu vegetal está en la etiqueta de la API
-            for vegetal_norm in normalized_plant_food_items:
-                if vegetal_norm in nombre_label_norm:
-                    posibles_vegetales_detectados_original_case.add(
-                        normalized_to_original_food_map.get(vegetal_norm, vegetal_norm)
-                    )
-            
-            # Opcional: Intenta que coincida si la etiqueta de la API (o una palabra de ella) está en tu lista de vegetales
-            # Esto podría ser útil pero también podría dar falsos positivos si no se ajusta bien.
-            # label_words = set(nombre_label_norm.split())
-            # for vegetal_norm in normalized_plant_food_items:
-            #     if vegetal_norm in label_words:
-            #         posibles_vegetales_detectados_original_case.add(
-            #             normalized_to_original_food_map.get(vegetal_norm, vegetal_norm)
-            #         )
+
+    for label in labels:
+        nombre_label_norm_api = normalize_text(label.description) # Normalized label from Vision API
+
+        # Strategy 1: Direct mapping using our new map
+        if nombre_label_norm_api in api_label_to_my_plant_map:
+            my_plant_norm = api_label_to_my_plant_map[nombre_label_norm_api]
+            # Ensure this mapped plant is actually in your defined list of plant foods
+            if my_plant_norm in normalized_plant_food_items:
+                original_name = normalized_to_original_food_map.get(my_plant_norm, my_plant_norm)
+                posibles_vegetales_detectados_original_case.add(original_name)
+                # st.write(f"Debug: Matched via API map: API '{nombre_label_norm_api}' -> My List '{my_plant_norm}' -> Display '{original_name}'") # Optional debug
+
+        # Strategy 2: Check if your plant name is a substring of the API label
+        # (e.g., your plant "tomate", API label "tomate cherry")
+        for my_plant_norm in normalized_plant_food_items:
+            if my_plant_norm in nombre_label_norm_api:
+                original_name = normalized_to_original_food_map.get(my_plant_norm, my_plant_norm)
+                posibles_vegetales_detectados_original_case.add(original_name)
+                # st.write(f"Debug: Matched via substring: My List '{my_plant_norm}' in API '{nombre_label_norm_api}' -> Display '{original_name}'") # Optional debug
     
-    # Mensaje si se detectaron etiquetas pero no coincidieron con la lista (movido aquí para más contexto)
-    if labels and not posibles_vegetales_detectados_original_case and not response.error.message:
+    if labels and not posibles_vegetales_detectados_original_case:
+        # This message will now appear if, even with the new map, no matches are found.
+        # You might want to show the raw API labels here too for ongoing tuning.
+        raw_api_labels_for_warning = [l.description for l in labels[:5]] # Get top 5 original descriptions
         st.warning(
-            "La API de Vision devolvió etiquetas (mostradas arriba en depuración), "
-            "pero ninguna coincidió con tu lista interna de plantas tras la normalización y el filtrado."
+            f"La API de Vision devolvió etiquetas (ej: {', '.join(raw_api_labels_for_warning)}), "
+            "pero ninguna coincidió con tu lista interna de plantas tras la normalización y el mapeo."
         )
 
     return sorted(list(posibles_vegetales_detectados_original_case))
