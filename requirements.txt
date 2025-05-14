@@ -6,3 +6,4 @@ plotly
 gspread
 oauth2client
 google-cloud-vision
+unidecode
