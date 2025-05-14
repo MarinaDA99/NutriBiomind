@@ -31,8 +31,6 @@ except Exception as e:
 
 # --- Configuración de Clientes de Google Cloud ---
 
-# --- Configuración de Clientes de Google Cloud ---
-
 # Cliente para gspread (usa oauth2client)
 creds_gspread = None
 
@@ -40,59 +38,64 @@ creds_gspread = None
 vision_client = None
 
 google_services_available = False # Bandera general para saber si los servicios están listos
+gcp_secret_content_type_for_error = "unknown" # For debugging
 
 try:
-    # Esto debe ser el contenido JSON de tu clave de cuenta de servicio,
-    # almacenado como un string en los secretos de Streamlit.
-    creds_json_str = st.secrets["gcp_service_account"]
-    # Parsear el string JSON a un diccionario. Este es el formato que esperan las funciones de credenciales.
-    creds_info_dict = json.loads(creds_json_str)
+    gcp_secret_content = st.secrets["gcp_service_account"]
+    gcp_secret_content_type_for_error = str(type(gcp_secret_content))
+    creds_info_dict = None
+
+    if isinstance(gcp_secret_content, str):
+        # If the secret is a string, it's likely the full JSON string that needs parsing.
+        creds_info_dict = json.loads(gcp_secret_content)
+    elif hasattr(gcp_secret_content, 'to_dict') and callable(gcp_secret_content.to_dict):
+        # If it's an AttrDict or similar Streamlit secrets object that has a to_dict() method
+        creds_info_dict = gcp_secret_content.to_dict()
+    elif isinstance(gcp_secret_content, dict):
+        # If it's already a plain dictionary (less likely for st.secrets top-level, but possible)
+        creds_info_dict = gcp_secret_content
+    else:
+        # Fallback for other dictionary-like objects (e.g., AttrDict that might not have to_dict directly)
+        # Attempt to convert it to a dictionary.
+        try:
+            creds_info_dict = dict(gcp_secret_content)
+        except (TypeError, ValueError) as convert_err:
+            st.error(f"El contenido del secreto 'gcp_service_account' no es un string JSON ni un diccionario/AttrDict convertible. Error de conversión: {convert_err}")
+            raise ValueError(f"Formato de secreto no compatible: {gcp_secret_content_type_for_error}")
+
+
+    if creds_info_dict is None or not isinstance(creds_info_dict, dict):
+        st.error(f"No se pudo interpretar el contenido del secreto 'gcp_service_account' como un diccionario. Tipo obtenido: {gcp_secret_content_type_for_error}")
+        raise ValueError("Fallo al interpretar el secreto como diccionario.")
+
+    # Now creds_info_dict should be a standard Python dictionary
 
     # 1. Inicializar credenciales para gspread
     scope_gspread = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     creds_gspread = ServiceAccountCredentials.from_json_keyfile_dict(creds_info_dict, scope_gspread)
-    # La autorización real de gspread (gspread.authorize) se hace en get_sheet()
 
     # 2. Inicializar cliente de Vision con las credenciales cargadas explícitamente
-    # Se importa aquí para evitar un error si google-auth no estuviera instalado, aunque debería estarlo.
     from google.oauth2 import service_account as google_service_account
-
-    # Crear objeto de credenciales para las bibliotecas google-cloud-*
     vision_credentials = google_service_account.Credentials.from_service_account_info(creds_info_dict)
     vision_client = vision.ImageAnnotatorClient(credentials=vision_credentials)
 
-    # Si ambas inicializaciones parecen exitosas (sin excepciones hasta aquí)
     google_services_available = True
-    # Puedes añadir un st.sidebar.success("Servicios de Google conectados.") para feedback visual.
+    # st.sidebar.success("Servicios de Google conectados.") # Optional: uncomment for visual feedback
 
 except KeyError:
     st.error("Error Crítico: La clave 'gcp_service_account' no se encontró en los secretos de Streamlit (secrets.toml). "
-             "Asegúrate de haberla configurado correctamente con el contenido COMPLETO y VÁLIDO de tu archivo JSON de clave de cuenta de servicio. "
-             "Las funciones de Google Sheets y Vision AI no estarán disponibles.")
-    # creds_gspread y vision_client seguirán siendo None
+             "Asegúrate de haberla configurado correctamente.")
 except json.JSONDecodeError:
-    st.error("Error Crítico: El valor de 'gcp_service_account' en los secretos de Streamlit no es un JSON válido. "
-             "Por favor, copia y pega el contenido completo del archivo JSON de tu clave de cuenta de servicio. "
-             "Las funciones de Google Sheets y Vision AI no estarán disponibles.")
-    # creds_gspread y vision_client seguirán siendo None
-except ImportError:
-    st.error("Error Crítico: Faltan bibliotecas necesarias para la autenticación con Google ('google-auth'). "
-             "Asegúrate de que 'google-auth' y 'google-cloud-vision' están en tu archivo requirements.txt.")
-    # creds_gspread y vision_client seguirán siendo None
+    st.error("Error Crítico: El valor de 'gcp_service_account' (si se interpretó como string) no es un JSON válido. "
+             "Verifica la estructura del JSON si lo pegaste como un string completo en secrets.toml.")
+except ValueError as ve: # Catch specific ValueErrors from our checks
+    st.error(f"Error de configuración o interpretación de secretos: {ve}")
 except Exception as e:
-    st.error(f"Error al inicializar los servicios de Google: {e}. Algunas funciones podrían no estar disponibles.")
-    # creds_gspread y vision_client podrían ser None o estar parcialmente inicializados
+    st.error(f"Error inesperado al inicializar los servicios de Google: {e}. "
+             f"Tipo de contenido del secreto procesado: {gcp_secret_content_type_for_error}. Algunas funciones podrían no estar disponibles.")
 
 # El resto de tu código que depende de creds_gspread y vision_client
 # debe verificar si son None o si google_services_available es False antes de usarlos.
-
-# Por ejemplo, en get_sheet():
-# Ya tienes una comprobación con `creds`, asegúrate que sea `creds_gspread`
-# Y considera también `google_services_available`
-
-# En detectar_vegetales_google_vision:
-# El `if vision_client is None:` que ya tienes es correcto.
-
 # --- Definiciones de Categorías y Alimentos ---
 categorias = {
     "🥦 Verduras y hortalizas": ["acelga", "apio", "berenjena", "brócoli", "calabacín", "calabaza", "cardo", "cebolla", "cebolleta", "col blanca", "col de Bruselas", "col lombarda", "col rizada (kale)", "coliflor", "endibia", "escarola", "espárrago", "espinaca", "hinojo", "judía verde", "lechuga romana", "lechuga iceberg", "nabo", "pepino", "pimiento rojo", "pimiento verde", "puerro", "rábano", "remolacha", "tomate", "zanahoria", "alcachofa", "chirivía", "boniato (batata)", "patata", "ñame", "taro", "malanga", "yuca", "okra", "pak choi", "berza", "acedera", "mostaza verde", "diente de león (hojas)", "berro", "canónigos", "mizuna", "tatsoi", "escarola rizada"],
