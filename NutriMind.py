@@ -29,15 +29,51 @@ except Exception as e:
     google_services_available = False
     creds = None # Asegurar que creds está definido
 
-# --- Cliente de Google Cloud Vision ---
-# CAMBIO: Inicializar solo si las credenciales están disponibles
-vision_client = None
-if google_services_available:
-    try:
-        vision_client = vision.ImageAnnotatorClient(credentials=creds) # Usar las mismas credenciales si es posible o configurar autenticación de Vision por separado
-    except Exception as e:
-        st.warning(f"No se pudo inicializar el cliente de Google Vision: {e}. La detección por imagen no funcionará.")
-        vision_client = None
+# --- Configuración de Clientes de Google Cloud ---
+
+# Credenciales para gspread (usa oauth2client)
+scope_gspread = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+creds_gspread = None # Se inicializará en el try-except
+
+# Cliente para Google Vision (usa google-auth y ADC por defecto)
+vision_client = None # Se inicializará en el try-except
+
+google_services_available = False # Bandera general para saber si los servicios están listos
+
+try:
+    # Esto debe ser el contenido JSON de tu clave de cuenta de servicio
+    creds_dict_from_secrets = st.secrets["gcp_service_account"]
+
+    # Inicializar credenciales para gspread
+    creds_gspread = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict_from_secrets, scope_gspread)
+
+    # Inicializar cliente de Vision.
+    # Streamlit Cloud debería configurar ADC si el secreto gcp_service_account está correctamente formateado como JSON.
+    # El cliente de Vision usará estas credenciales automáticamente.
+    vision_client = vision.ImageAnnotatorClient()
+
+    google_services_available = True # Si las inicializaciones parecen exitosas
+
+except KeyError:
+    st.error("La clave 'gcp_service_account' no se encontró en los secretos de Streamlit (secrets.toml). Asegúrate de haberla configurado correctamente con el contenido JSON de tu clave de cuenta de servicio.")
+    # creds_gspread y vision_client seguirán siendo None
+except Exception as e:
+    st.error(f"Error al inicializar los servicios de Google: {e}. Algunas funciones podrían no estar disponibles.")
+    # creds_gspread y vision_client podrían ser None o estar parcialmente inicializados
+
+# Asegúrate de que las funciones que usan estos clientes (get_sheet, detectar_vegetales_google_vision)
+# ahora usen 'creds_gspread' y el 'vision_client' global respectivamente, y que manejen el caso de que sean None.
+# Por ejemplo, en get_sheet():
+# def get_sheet():
+#   if not google_services_available or creds_gspread is None: # Cambiado de 'creds' a 'creds_gspread'
+#       st.warning("...")
+#       return None
+#   client_gspread = gspread.authorize(creds_gspread) # Usar creds_gspread
+#   # ...
+
+# Y en detectar_vegetales_google_vision, ya usa el 'vision_client' global.
+# Solo asegúrate de que 'google_services_available' refleje el estado de ambos.
+# El 'if vision_client is None:' dentro de detectar_vegetales_google_vision ya maneja esto.
 # El print(client) original fue eliminado ya que era para depuración en consola.
 
 # --- Definiciones de Categorías y Alimentos ---
