@@ -691,4 +691,244 @@ def mostrar_registros_y_analisis(df_user, current_user_id):
                     kmeans = KMeans(n_clusters=n_clusters_kmeans, random_state=42, n_init='auto').fit(features_cluster)
                     df_display_clustered = df_display.loc[features_cluster.index].copy()
                     df_display_clustered['cluster'] = kmeans.labels_.astype(str) # Color como string
-                    fig3 = px.scatter(df_display_clustered.dropna(subset=['cluster']), x="diversidad_diaria_plant
+                    fig3 = px.scatter(df_display_clustered.dropna(subset=['cluster']), x="diversidad_diaria_plantas", y="sueno", color="cluster",
+                                      hover_data=["fecha", "animo"], title=f"Clusters de Días ({n_clusters_kmeans} grupos)")
+                    st.plotly_chart(fig3, use_container_width=True)
+                    st.caption("Clusters de días con características similares de diversidad, sueño y ánimo.")
+                except Exception as e: st.warning(f"No se pudo realizar el clustering: {e}")
+            else: st.info("No hay suficientes datos para clustering con el número de clusters deseado.")
+        else: st.info("No hay suficientes datos (>=3 registros con diversidad, sueño y ánimo) para clustering.")
+
+    st.subheader("📤 Exportar tus datos")
+    if not df_user.empty:
+        csv_buffer = io.StringIO()
+        df_user.to_csv(csv_buffer, index=False, encoding='utf-8')
+        st.download_button(label="⬇️ Descargar tus datos como CSV", data=csv_buffer.getvalue(),
+                           file_name=f"registro_nutribio_{current_user_id}_{datetime.now().strftime('%Y%m%d')}.csv", mime="text/csv")
+    else: st.info("No hay datos para exportar.")
+
+# --- Mensajes sobre Prebióticos y Probióticos ---
+def mostrar_mensajes_pre_probioticos(df_user_registros_diarios, current_user_id):
+    st.markdown("---"); st.subheader("💡 Sabías que...")
+    mensajes_generales = [
+        "**Probióticos**: microorganismos vivos beneficiosos. Busca yogur natural, kéfir, chucrut o kimchi no pasteurizados!",
+        "**Prebióticos**: alimento de tus bacterias intestinales. En ajos, cebollas, puerros, espárragos, plátanos verdes y avena.",
+        "Una microbiota diversa es clave para tu salud digestiva e inmunológica. ¡Varía tus fuentes de pre y probióticos!",
+        "El consumo regular de prebióticos puede mejorar la absorción de minerales como el calcio.",
+        "Los probióticos pueden ayudar a equilibrar tu microbiota, útil tras un tratamiento con antibióticos.",
+        "Incluir alimentos fermentados en tu dieta es una excelente forma de obtener probióticos naturales."
+    ]
+    st.info(random.choice(mensajes_generales))
+
+    if not df_user_registros_diarios.empty:
+        consumo_reciente_pro = False; consumo_reciente_pre = False
+        hoy = datetime.now().date()
+        registros_recientes = df_user_registros_diarios[
+            (pd.to_datetime(df_user_registros_diarios["fecha"]).dt.date >= (hoy - timedelta(days=3))) &
+            (df_user_registros_diarios["tipo_registro"] == "registro_diario")
+        ]
+        alimentos_consumidos_recientemente_norm = set()
+        for _, row in registros_recientes.iterrows():
+            comida_norm_str = str(row.get("comida_normalizada_canonica", "")).split(",")
+            for item_norm in comida_norm_str:
+                alimentos_consumidos_recientemente_norm.add(item_norm.strip())
+        
+        if normalized_probiotic_foods.intersection(alimentos_consumidos_recientemente_norm):
+            consumo_reciente_pro = True
+        if normalized_prebiotic_foods.intersection(alimentos_consumidos_recientemente_norm):
+            consumo_reciente_pre = True
+            
+        if not consumo_reciente_pro and probiotic_foods_original_case:
+            sug_pro = random.sample(list(probiotic_foods_original_case), min(3, len(probiotic_foods_original_case)))
+            st.warning(f"💡 {current_user_id}, no has registrado probióticos recientemente. Considera: {', '.join(sug_pro)}.")
+        if not consumo_reciente_pre and prebiotic_foods_original_case:
+            sug_pre = random.sample(list(prebiotic_foods_original_case), min(3, len(prebiotic_foods_original_case)))
+            st.warning(f"💡 {current_user_id}, ¿unos prebióticos? {', '.join(sug_pre)} son buenas opciones.")
+
+# --- Contenido Educativo ---
+contenido_educativo = {
+    "pni_alimentacion": {
+        "titulo_modulo": "🤝 PNI y Alimentación: Conectando Mente y Plato",
+        "lecciones": [
+            {"id": "pni_intro", "titulo": "¿Qué es la Psiconeuroinmunología (PNI)?",
+             "texto": "La Psiconeuroinmunología (PNI) estudia la interacción entre procesos psicológicos, sistema nervioso, inmune y endocrino.\n\nEnseña cómo pensamientos, estrés y estilo de vida (especialmente alimentación) influyen en la salud física y mental. Una alimentación antiinflamatoria y nutritiva es un pilar fundamental.",
+             "quiz": {"pregunta": "La PNI se enfoca únicamente en cómo la nutrición afecta el sistema inmune.", "opciones": ["Verdadero", "Falso"], "respuesta_correcta": "Falso", "explicacion": "La PNI es más amplia, estudiando interacciones entre sistemas psicológico, nervioso, inmune y endocrino, y cómo factores como la alimentación influyen en todos ellos."}},
+            {"id": "pni_30_plantas", "titulo": "🎯 Las 30 Plantas Semanales y la PNI",
+             "texto": "Consumir variedad de plantas (¡30 distintas/semana!) es crucial en PNI:\n- **Nutrición Microbiota:** Diferentes fibras y polifenoles alimentan distintas bacterias beneficiosas. Una microbiota diversa es clave para digestión, inmunidad y neurotransmisores.\n- **Reducción Inflamación:** Fitoquímicos (antioxidantes, polifenoles) tienen propiedades antiinflamatorias, contrarrestando inflamación crónica de bajo grado.\n- **Aporte Micronutrientes:** Vitaminas y minerales son cofactores para miles de reacciones bioquímicas, incluyendo las de sistemas nervioso e inmune.\n\nDiversificar plantas asegura una gama más amplia de estos compuestos, fortaleciendo la resiliencia.",
+             "quiz": {"pregunta": "Según la PNI, la diversidad de plantas en la dieta solo beneficia la digestión.", "opciones": ["Verdadero", "Falso"], "respuesta_correcta": "Falso", "explicacion": "Beneficia la microbiota, reduce inflamación y aporta micronutrientes para múltiples sistemas (nervioso, inmune)."}}
+        ]
+    },
+    "microbiota_poder": {
+        "titulo_modulo": "🔬 El Poder de tu Microbiota",
+        "lecciones": [
+            {"id": "micro_intro", "titulo": "🦠 Tu Universo Interior: La Microbiota", "texto": "Tu intestino alberga billones de microorganismos (microbiota intestinal). Este ecosistema digiere alimentos, produce vitaminas, entrena tu sistema inmune y se comunica con tu cerebro. ¡Cuidarla es cuidarte!"},
+            {"id": "micro_prebioticos", "titulo": "🌾 Prebióticos: El Festín de tus Bacterias Buenas", "texto": "Los prebióticos son fibras no digeribles que alimentan selectivamente bacterias beneficiosas. Fomentan su crecimiento. Encuéntralos en ajo, cebolla, puerro, espárragos, alcachofa, plátano verde y avena.",
+             "quiz": {"pregunta": "¿Los prebióticos son bacterias vivas que añadimos a nuestra dieta?", "opciones": ["Verdadero", "Falso"], "respuesta_correcta": "Falso", "explicacion": "Los prebióticos son 'alimento' para nuestras bacterias. Los probióticos son las bacterias vivas."}},
+            {"id": "micro_probioticos", "titulo": "🍦 Probióticos: Refuerzos Vivos", "texto": "Probióticos son microorganismos vivos que, en cantidades adecuadas, benefician la salud. Equilibran microbiota (post-antibióticos) o mejoran digestión. En yogur natural, kéfir, chucrut no pasteurizado, kimchi, miso y kombucha."}
+        ]
+    },
+    "crononutricion": {
+        "titulo_modulo": "⏰ Crononutrición: Comer en Sintonía con tu Reloj Biológico",
+        "lecciones": [
+            {"id": "crono_intro", "titulo": "🕰️ ¿Qué es la Crononutrición?", "texto": "Estudia cómo el momento de ingesta interactúa con ritmos circadianos (reloj biológico ~24h) y afecta metabolismo y salud.\n\nNo solo importa *qué* comes, sino *cuándo*. El cuerpo realiza funciones de manera más eficiente en diferentes momentos. La sensibilidad a la insulina suele ser mayor por la mañana."},
+            {"id": "crono_tips", "titulo": "💡 Principios Básicos de Crononutrición", "texto": "- **Desayuno Nutritivo:** Prioriza un desayuno completo (proteínas, fibra).\n- **Comidas Principales Durante el Día:** Concentra ingesta calórica en horas de luz.\n- **Cena Ligera y Temprana:** Evita comidas copiosas y tardías. Cenar 2-3h antes de dormir mejora digestión y sueño.\n- **Ayuno Nocturno:** 12-14h entre cena y desayuno puede tener beneficios metabólicos.\n\nEscucha a tu cuerpo y adapta estos principios. No son reglas estrictas.",
+             "quiz": {"pregunta": "Según la crononutrición, el mejor momento para una comida muy abundante es justo antes de dormir.", "opciones": ["Verdadero", "Falso"], "respuesta_correcta": "Falso", "explicacion": "La crononutrición sugiere cenas más ligeras y tempranas para respetar ritmos circadianos."}}
+        ]
+    }
+}
+
+def display_contenido_educativo():
+    st.title("📚 NutriWiki: Aprende y Crece")
+    for id_modulo, modulo_data in contenido_educativo.items():
+        with st.expander(f"**{modulo_data['titulo_modulo']}**", expanded=False):
+            for leccion in modulo_data["lecciones"]:
+                st.subheader(leccion["titulo"])
+                st.markdown(leccion["texto"])
+                if leccion.get("imagen_url"):
+                    try: st.image(leccion["imagen_url"])
+                    except Exception as e: st.warning(f"No se pudo cargar imagen: {leccion['imagen_url']}. Error: {e}")
+                if leccion.get("quiz"):
+                    quiz_data = leccion["quiz"]
+                    st.markdown("**Mini Quiz:**")
+                    with st.form(key=f"quiz_form_{id_modulo}_{leccion['id']}"):
+                        respuesta_usuario = st.radio(quiz_data["pregunta"], quiz_data["opciones"], key=f"quiz_radio_{id_modulo}_{leccion['id']}", index=None)
+                        submitted_quiz = st.form_submit_button("Comprobar respuesta")
+                        if submitted_quiz:
+                            if respuesta_usuario is None: st.warning("Por favor, selecciona una respuesta.")
+                            elif respuesta_usuario == quiz_data["respuesta_correcta"]: st.success("¡Correcto! 🎉")
+                            else: st.error(f"No del todo. Respuesta correcta: {quiz_data['respuesta_correcta']}")
+                            if quiz_data.get("explicacion") and respuesta_usuario is not None:
+                                st.info(f"Explicación: {quiz_data['explicacion']}")
+                st.markdown("---")
+
+# --- Main App ---
+def main():
+    st.sidebar.header("👤 Usuario")
+    if 'current_user' not in st.session_state:
+        st.session_state.current_user = ""
+    if 'detected_plants_img' not in st.session_state: # Inicializar para el form de imagen
+        st.session_state.detected_plants_img = []
+
+    user_input = st.sidebar.text_input("Ingresa tu nombre de usuario:", value=st.session_state.current_user, key="user_login_input")
+    if st.sidebar.button("Acceder / Cambiar Usuario"):
+        if user_input:
+            st.session_state.current_user = normalize_text(user_input.strip())
+            st.sidebar.success(f"Usuario actual: {st.session_state.current_user}")
+        else:
+            st.sidebar.error("El nombre de usuario no puede estar vacío.")
+    current_user_id = st.session_state.current_user
+
+    st.sidebar.title("Navegación")
+    pagina_seleccionada = st.sidebar.radio("Ir a:", ["🎯 Registro y Progreso", "📚 Aprende"], key="nav_main")
+
+    # Inicializar sheet aquí, después de que las credenciales (creds_gspread) se hayan intentado cargar globalmente
+    sheet = None
+    if google_services_available and creds_gspread:
+        sheet = get_sheet_cached(creds_gspread) # Usar la función cacheada y pasar las credenciales
+        if sheet: # Solo verificar encabezados si la hoja se cargó exitosamente
+            check_and_create_headers(sheet)
+        # No mostrar error aquí directamente, se maneja por sección si sheet es None
+
+    if pagina_seleccionada == "🎯 Registro y Progreso":
+        if not current_user_id:
+            st.info("Por favor, ingresa un nombre de usuario en la barra lateral para registrar y ver tu progreso.")
+            st.stop()
+        if not sheet:
+            st.error("No se pudo conectar a Google Sheets. El registro y la visualización de datos no están disponibles.")
+            st.stop()
+            
+        st.header(f"🎯 Registro y Progreso de {current_user_id}")
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.subheader(f"📋 Registro diario")
+            with st.form("registro_diario_form"):
+                seleccionados_form = st.multiselect("¿Qué comiste hoy? (Puedes escribir para buscar)",
+                                                    options=all_selectable_food_items_original_case,
+                                                    help="Escribe parte del nombre, ej: 'manza' para 'Manzana'.")
+                fecha_registro_form = st.date_input("Fecha del registro", datetime.now().date())
+                sueno_form = st.number_input("¿Horas de sueño?", min_value=0.0, max_value=24.0, step=0.5, value=7.5)
+                ejercicio_form = st.text_input("¿Ejercicio realizado? (ej: Caminar 30 min, Yoga, Pesas)")
+                animo_form = st.slider("¿Cómo te sientes hoy? (1=Mal, 5=Excelente)", 1, 5, 3)
+                submitted_registro_manual = st.form_submit_button("Guardar Registro Manual")
+                if submitted_registro_manual:
+                    if not seleccionados_form:
+                        st.warning("Por favor, selecciona al menos un alimento.")
+                    else:
+                        guardar_registro(sheet, current_user_id, fecha_registro_form, seleccionados_form, sueno_form, ejercicio_form, animo_form)
+                        st.rerun()
+        with col2:
+            st.subheader("📸 Detección desde foto (Plantas)")
+            if vision_client is None:
+                st.warning("Detección por imagen no disponible (cliente de Vision no inicializado).")
+            else:
+                img_file = st.file_uploader("Sube una foto de tu comida (opcional)", type=["jpg", "jpeg", "png"], key="img_uploader")
+                if img_file:
+                    st.image(img_file, caption="Tu imagen", use_container_width=True)
+                    img_bytes = img_file.getvalue()
+                    if st.button("🔍 Detectar Plantas en Imagen"):
+                        with st.spinner("Detectando plantas..."):
+                            st.session_state.detected_plants_img = detectar_plantas_google_vision(img_bytes)
+                        if not st.session_state.detected_plants_img:
+                            st.warning("🤔 No se detectaron plantas conocidas. Puedes añadirlas manualmente.")
+                
+                if st.session_state.detected_plants_img: # Mostrar formulario si hay plantas detectadas
+                    st.info(f"Posibles plantas detectadas: {', '.join(st.session_state.detected_plants_img)}")
+                    with st.form("confirmar_vegetales_img_form"):
+                        st.write("Confirma las plantas y añade otras si es necesario.")
+                        confirmados_api = st.multiselect("Confirma las plantas detectadas:",
+                                                         options=st.session_state.detected_plants_img,
+                                                         default=st.session_state.detected_plants_img)
+                        opciones_adicionales = [p for p in plant_food_items_original_case if p not in st.session_state.detected_plants_img]
+                        adicionales_manual_img = st.multiselect("Añade otras plantas (no detectadas):", options=opciones_adicionales)
+                        
+                        todos_seleccionados_img = sorted(list(set(confirmados_api + adicionales_manual_img)))
+                        st.write("**Completa los datos para este registro (imagen):**")
+                        fecha_registro_img = st.date_input("Fecha (imagen)", datetime.now().date(), key="fecha_img_reg")
+                        sueno_img = st.number_input("Horas de sueño (imagen)", 0.0, 24.0, 7.5, 0.5, key="sueno_img_reg")
+                        ejercicio_img = st.text_input("Ejercicio (imagen)", key="ejercicio_img_reg")
+                        animo_img = st.slider("Ánimo (imagen)", 1, 5, 3, key="animo_img_reg")
+                        submitted_confirmar_img = st.form_submit_button("✅ Confirmar y Guardar Plantas de Imagen")
+
+                        if submitted_confirmar_img:
+                            if not todos_seleccionados_img:
+                                st.warning("No has seleccionado ninguna planta para guardar.")
+                            else:
+                                guardar_registro(sheet, current_user_id, fecha_registro_img, todos_seleccionados_img, sueno_img, ejercicio_img, animo_img)
+                                st.session_state.detected_plants_img = [] # Limpiar después de guardar
+                                st.rerun()
+        
+        # Visualización (fuera de las columnas, dentro de la página "Registro y Progreso")
+        st.markdown("---"); st.header(f"📊 Tu Progreso y Análisis")
+        if st.button(f"🗓️ Calcular/Actualizar Resumen Semanal (para semana pasada)"):
+            hoy_calc = datetime.now().date()
+            lunes_esta_semana_calc = hoy_calc - timedelta(days=hoy_calc.weekday())
+            calcular_y_guardar_resumen_semanal_usuario(sheet, current_user_id, lunes_esta_semana_calc)
+            st.rerun()
+        try:
+            data_with_headers = sheet.get_all_records(expected_headers=EXPECTED_HEADERS)
+            df_full = pd.DataFrame(data_with_headers)
+            if not df_full.empty and "usuario" in df_full.columns:
+                df_user_specific = df_full[df_full["usuario"] == current_user_id].copy()
+                if not df_user_specific.empty:
+                    df_user_specific["fecha"] = pd.to_datetime(df_user_specific["fecha"], errors='coerce').dt.date
+                    df_user_specific.dropna(subset=["fecha"], inplace=True)
+                    mostrar_registros_y_analisis(df_user_specific, current_user_id)
+                    df_user_registros_tipo_registro = df_user_specific[df_user_specific['tipo_registro'] == 'registro_diario'].copy()
+                    mostrar_mensajes_pre_probioticos(df_user_registros_tipo_registro, current_user_id)
+                else:
+                    st.info(f"No hay datos para '{current_user_id}'. ¡Empieza a añadir tus comidas!")
+            elif df_full.empty:
+                st.info("La hoja de cálculo parece vacía. ¡Empieza a registrar tus comidas!")
+            else:
+                st.warning("No se pudieron cargar los datos o la hoja no tiene la columna 'usuario'.")
+        except gspread.exceptions.GSpreadException as e:
+            st.error(f"Error gspread: {e}. Encabezados esperados: {', '.join(EXPECTED_HEADERS)}")
+        except Exception as e:
+            st.warning(f"No se pudieron cargar/procesar datos de Sheets: {type(e).__name__} - {e}")
+
+    elif pagina_seleccionada == "📚 Aprende":
+        display_contenido_educativo()
+
+if __name__ == "__main__":
+    main()
