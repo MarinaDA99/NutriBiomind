@@ -1139,7 +1139,7 @@ def display_contenido_educativo():
 
 # --- Main App ---
 def main():
-     sheet = None 
+    sheet = None 
     if google_services_available and creds_gspread: # Comprobar que creds_gspread esté inicializado
         sheet = get_sheet() # <--- SIN ARGUMENTOS AQUÍ
         if sheet:
