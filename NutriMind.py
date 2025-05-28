@@ -1143,7 +1143,7 @@ def main():
     if google_services_available and creds_gspread: # Comprobar que creds_gspread esté inicializado
         sheet = get_sheet() # <--- SIN ARGUMENTOS AQUÍ
         if sheet:
-            check_and_create_headers(sheet
+            check_and_create_headers(sheet)
     st.sidebar.header("👤 Usuario")
     if 'current_user' not in st.session_state:
         st.session_state.current_user = ""
