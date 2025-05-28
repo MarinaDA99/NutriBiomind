@@ -12,7 +12,7 @@ import numpy as np
 import io
 from google.cloud import vision
 import base64
-from unidecode import unidecode # NUEVO: Para quitar acentos
+from unidecode import unidecode # NUEVO: Para quitar acentosgunhs
 import random # NUEVO: Para mensajes aleatorios
 
 st.set_page_config(page_title="NutriBioMind", layout="centered")
@@ -33,7 +33,34 @@ except Exception as e:
 
 # Cliente para gspread (usa oauth2client)
 creds_gspread = None
+@st.cache_resource(ttl=600) # Cache para evitar reconexiones constantes
+def get_sheet(): # <--- SIN PARÁMETROS AQUÍ
+    # Accede a 'creds_gspread' y 'google_services_available' directamente
+    # ya que están disponibles en el ámbito del módulo.
+    if not google_services_available or creds_gspread is None: # Usa la variable global/del módulo
+        st.warning("Los servicios de Google (gspread) no están disponibles. No se puede acceder a la hoja de cálculo.")
+        return None
+    try:
+        # Utiliza la variable creds_gspread del ámbito del módulo
+        client_gspread = gspread.authorize(creds_gspread) 
+        return client_gspread.open("habitos_microbiota").sheet1
+    except gspread.exceptions.SpreadsheetNotFound:
+        # La variable global creds_info_dict debería estar disponible si las credenciales se cargaron
+        email_cuenta_servicio = "EMAIL_NO_ENCONTRADO"
+        if creds_info_dict and 'client_email' in creds_info_dict:
+            email_cuenta_servicio = creds_info_dict['client_email']
+        elif isinstance(st.secrets.get("gcp_service_account"), dict) and "client_email" in st.secrets["gcp_service_account"]:
+             # Intento alternativo de obtener el email si creds_info_dict no estuviera poblado globalmente aquí
+            email_cuenta_servicio = st.secrets["gcp_service_account"]["client_email"]
 
+        st.error(f"Hoja de cálculo 'habitos_microbiota' no encontrada. "
+                 f"Asegúrate de que existe y está compartida con el email de la cuenta de servicio: "
+                 f"{email_cuenta_servicio}")
+        return None
+    except Exception as e:
+        st.error(f"No se pudo conectar a Google Sheets: {type(e).__name__} - {e}")
+        return None
+        
 # Cliente para Google Vision (usa google-auth)
 vision_client = None
 
@@ -104,15 +131,6 @@ PLANT_CATEGORIES_KEYS = [
     "🥦 Verduras y hortalizas", "🍎 Frutas", "🌰 Frutos secos y semillas",
     "🫘 Legumbres", "🌾 Cereales y pseudocereales", "🍄 Setas y hongos", "🌿 Hierbas y especias"
 ]
-def normalize_text(text):
-    """
-    Normaliza el texto: minúsculas, sin acentos (simulado para claves de diccionario).
-    En una implementación real, esto sería más robusto.
-    """
-    import unicodedata
-    text = text.lower()
-    text = ''.join(c for c in unicodedata.normalize('NFD', text) if unicodedata.category(c) != 'Mn')
-    return text
 
 food_details_db = {
     # Verduras y Hortalizas (Existentes)
@@ -1121,6 +1139,11 @@ def display_contenido_educativo():
 
 # --- Main App ---
 def main():
+     sheet = None 
+    if google_services_available and creds_gspread: # Comprobar que creds_gspread esté inicializado
+        sheet = get_sheet() # <--- SIN ARGUMENTOS AQUÍ
+        if sheet:
+            check_and_create_headers(sheet
     st.sidebar.header("👤 Usuario")
     if 'current_user' not in st.session_state:
         st.session_state.current_user = ""
